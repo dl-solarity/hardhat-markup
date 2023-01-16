@@ -50,7 +50,7 @@ class MDGenerator {
       contractTags.push(this.createHeaderTag("Errors info", TOPIC_H_SIZE));
 
       Object.keys(errors).forEach((errorSign: string) => {
-        this.generateEventBlock(contractTags, errorSign, errors[errorSign]);
+        this.generateErrorBlock(contractTags, errorSign, errors[errorSign]);
       });
     }
 

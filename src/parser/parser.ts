@@ -77,11 +77,14 @@ class Parser {
       const devDocEventInfo = devDoc.events ? devDoc.events[eventSign] : undefined;
       const userDocEventInfo = userDoc.events ? userDoc.events[eventSign] : undefined;
 
-      eventsInfo[eventSign] = this.parseEventInfo(
-        this.getNameFromSignature(eventSign),
-        devDocEventInfo,
-        userDocEventInfo
-      );
+      const eventName = this.getNameFromSignature(eventSign);
+      const eventInfo: EventInfo = this.parseEventInfo(eventName, devDocEventInfo, userDocEventInfo);
+
+      if (eventInfo.params) {
+        this.fillIndexedFields(eventName, eventInfo.params, abi);
+      }
+
+      eventsInfo[eventSign] = eventInfo;
     });
 
     return eventsInfo;
@@ -180,6 +183,22 @@ class Parser {
     return undefined;
   }
 
+  fillIndexedFields(eventName: string, params: Param[], abi: any) {
+    const neededAbi = this.getAbiByName(abi, eventName, EVENT_TYPE);
+
+    neededAbi.inputs.map((el: any) => {
+      const neededIndex = params.findIndex((param: Param) => {
+        return param.paramName == el.name;
+      });
+
+      if (neededIndex == -1) {
+        throw new Error(`Failed to parse indexed params for ${eventName} event`);
+      }
+
+      params[neededIndex].isIndexed = el.indexed;
+    });
+  }
+
   parseSignatures(abi: any, filterType: string): string[] {
     const signatures: string[] = [];
 
@@ -203,11 +222,15 @@ class Parser {
   }
 
   private getStateMutabilityByName(abi: any, name: string): string | undefined {
-    const neededAbi = abi.find((el: any) => {
-      return el.type == FUNCTION_TYPE && el.name == name;
-    });
+    const neededAbi = this.getAbiByName(abi, name, FUNCTION_TYPE);
 
     return neededAbi ? neededAbi.stateMutability : undefined;
+  }
+
+  private getAbiByName(abi: any, name: string, methodType: string): any | undefined {
+    return abi.find((el: any) => {
+      return el.type == methodType && el.name == name;
+    });
   }
 
   private getNameFromSignature(sign: string): string {
