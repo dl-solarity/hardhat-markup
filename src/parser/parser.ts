@@ -13,7 +13,7 @@ import {
 } from "./types";
 
 class Parser {
-  parseContractInfo(name: string, devDoc: any, userDoc: any, abi: any): ContractInfo {
+  parseContractInfo(name: string, devDoc: any, userDoc: any, abi: any, evmInfo: any): ContractInfo {
     const contractInfo: ContractInfo = this.parseBaseDescription(name, devDoc, userDoc);
 
     if (devDoc.author) {
@@ -30,7 +30,7 @@ class Parser {
       contractInfo.events = events;
     }
 
-    const functions: FunctionsInfo = this.parseFunctionsInfo(devDoc, userDoc, abi);
+    const functions: FunctionsInfo = this.parseFunctionsInfo(devDoc, userDoc, abi, evmInfo);
 
     if (functions) {
       contractInfo.functions = functions;
@@ -45,7 +45,7 @@ class Parser {
     return contractInfo;
   }
 
-  parseFunctionsInfo(devDoc: any, userDoc: any, abi: any): FunctionsInfo {
+  parseFunctionsInfo(devDoc: any, userDoc: any, abi: any, evmInfo: any): FunctionsInfo {
     const functionsInfo: FunctionsInfo = {};
 
     this.parseSignatures(abi, FUNCTION_TYPE).forEach((functionSign) => {
@@ -53,15 +53,22 @@ class Parser {
       const stateMutability = this.getStateMutabilityByName(abi, functionName);
 
       if (!stateMutability) {
-        throw new Error(`Failed to parse function ${functionSign}`);
+        throw new Error(`Failed to parse state mutability info for ${functionSign} function`);
       }
 
       const devDocFunctionInfo = devDoc.methods ? devDoc.methods[functionSign] : undefined;
       const userDocFunctionInfo = userDoc.methods ? userDoc.methods[functionSign] : undefined;
 
+      const funcSelector = evmInfo.methodIdentifiers[functionSign];
+
+      if (!funcSelector) {
+        throw new Error(`Failed to parse selector for ${functionSign} function`);
+      }
+
       functionsInfo[functionSign] = this.parseFunctionInfo(
         functionName,
         stateMutability,
+        funcSelector,
         devDocFunctionInfo,
         userDocFunctionInfo
       );
@@ -107,8 +114,18 @@ class Parser {
     return eventsInfo;
   }
 
-  parseFunctionInfo(functionName: string, stateMutability: string, devDoc: any, userDoc: any): FunctionInfo {
-    const functionInfo: FunctionInfo = { stateMutability, ...this.parseBaseMethodInfo(functionName, devDoc, userDoc) };
+  parseFunctionInfo(
+    functionName: string,
+    stateMutability: string,
+    selector: string,
+    devDoc: any,
+    userDoc: any
+  ): FunctionInfo {
+    const functionInfo: FunctionInfo = {
+      stateMutability,
+      selector,
+      ...this.parseBaseMethodInfo(functionName, devDoc, userDoc),
+    };
 
     const returns = this.parseReturns(devDoc);
 

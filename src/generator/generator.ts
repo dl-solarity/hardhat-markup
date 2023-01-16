@@ -61,9 +61,9 @@ module.exports = class Generator {
 
       await fsp.mkdir(this.outDir, { recursive: true });
 
-      const { abi, devdoc, userdoc } = buildInfo as any;
+      const { abi, devdoc, userdoc, evm } = buildInfo as any;
 
-      const contractInfo: ContractInfo = this.parser.parseContractInfo(name, devdoc, userdoc, abi);
+      const contractInfo: ContractInfo = this.parser.parseContractInfo(name, devdoc, userdoc, abi, evm);
 
       const mdInfo = `${this.outDir}/${name}.md`;
       await fsp.writeFile(mdInfo, this.mdGenerator.generateContractMDStr(contractInfo));

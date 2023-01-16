@@ -20,6 +20,7 @@ export interface EventsInfo {
 
 export interface FunctionInfo extends BaseMethodInfo {
   stateMutability: string;
+  selector: string;
   returns?: Return[];
 }
 

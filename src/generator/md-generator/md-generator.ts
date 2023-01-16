@@ -70,9 +70,15 @@ class MDGenerator {
   generateFunctionBlock(contractTags: any[], funcSign: string, funcInfo: FunctionInfo) {
     contractTags.push(this.createHeaderTag(`${funcInfo.name} function`, FUNCTION_NAME_H_SIZE));
 
-    const fullFuncSig = `${funcSign} ${funcInfo.stateMutability}`;
+    const fullFuncSign = `${funcSign} ${funcInfo.stateMutability}`;
     contractTags.push(
-      this.createParagraphTag(`${this.getBoldStr("Function signature:")} ${this.getInlineCodeStr(fullFuncSig)}`)
+      this.createParagraphTag(`${this.getBoldStr("Function signature:")} ${this.getInlineCodeStr(fullFuncSign)}`)
+    );
+
+    contractTags.push(
+      this.createParagraphTag(
+        `${this.getBoldStr("Function selector:")} ${this.getInlineCodeStr(`0x${funcInfo.selector}`)}`
+      )
     );
 
     this.generateBaseDescriptionBlock(contractTags, funcInfo);
