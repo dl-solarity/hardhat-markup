@@ -1,4 +1,4 @@
-import { EVENT_TYPE, FUNCTION_TYPE } from "./constants";
+import { ERROR_TYPE, EVENT_TYPE, FUNCTION_TYPE } from "./constants";
 import {
   Return,
   Param,
@@ -6,6 +6,7 @@ import {
   BaseMethodInfo,
   EventInfo,
   FunctionInfo,
+  ErrorsInfo,
   EventsInfo,
   FunctionsInfo,
   ContractInfo,
@@ -33,6 +34,12 @@ class Parser {
 
     if (functions) {
       contractInfo.functions = functions;
+    }
+
+    const errors: ErrorsInfo = this.parseErrorsInfo(devDoc, userDoc, abi);
+
+    if (errors) {
+      contractInfo.errors = errors;
     }
 
     return contractInfo;
@@ -80,6 +87,23 @@ class Parser {
     return eventsInfo;
   }
 
+  parseErrorsInfo(devDoc: any, userDoc: any, abi: any): ErrorsInfo {
+    const eventsInfo: ErrorsInfo = {};
+
+    this.parseSignatures(abi, ERROR_TYPE).forEach((errorSign) => {
+      const devDocErrorInfo = devDoc.errors ? devDoc.errors[errorSign][0] : undefined;
+      const userDocErrorInfo = userDoc.errors ? userDoc.errors[errorSign][0] : undefined;
+
+      eventsInfo[errorSign] = this.parseEventInfo(
+        this.getNameFromSignature(errorSign),
+        devDocErrorInfo,
+        userDocErrorInfo
+      );
+    });
+
+    return eventsInfo;
+  }
+
   parseFunctionInfo(functionName: string, stateMutability: string, devDoc: any, userDoc: any): FunctionInfo {
     const functionInfo: FunctionInfo = { stateMutability, ...this.parseBaseMethodInfo(functionName, devDoc, userDoc) };
 
@@ -94,6 +118,10 @@ class Parser {
 
   parseEventInfo(eventName: string, devDoc: any, userDoc: any): EventInfo {
     return this.parseBaseMethodInfo(eventName, devDoc, userDoc);
+  }
+
+  parseErrorInfo(errorName: string, devDoc: any, userDoc: any): EventInfo {
+    return this.parseBaseMethodInfo(errorName, devDoc, userDoc);
   }
 
   parseBaseMethodInfo(methodName: string, devDoc: any, userDoc: any): BaseMethodInfo {
@@ -175,11 +203,11 @@ class Parser {
   }
 
   private getStateMutabilityByName(abi: any, name: string): string | undefined {
-    const foudAbi = abi.find((el: any) => {
+    const neededAbi = abi.find((el: any) => {
       return el.type == FUNCTION_TYPE && el.name == name;
     });
 
-    return foudAbi ? foudAbi.stateMutability : undefined;
+    return neededAbi ? neededAbi.stateMutability : undefined;
   }
 
   private getNameFromSignature(sign: string): string {

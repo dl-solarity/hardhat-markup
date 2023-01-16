@@ -1,6 +1,6 @@
 const Generator = require("./generator/generator");
 
-import { TASK_COMPILE } from "hardhat/builtin-tasks/task-names";
+import { TASK_COMPILE, TASK_CLEAN } from "hardhat/builtin-tasks/task-names";
 import { extendConfig, task, types } from "hardhat/config";
 import { NomicLabsHardhatPluginError } from "hardhat/plugins";
 
@@ -22,7 +22,7 @@ const markup: ActionType<BindingArgs> = async ({ output, only, compile }, hre) =
   hre.config.markup.only = only === undefined ? hre.config.markup.only : only;
 
   if (compile) {
-    await hre.run(TASK_COMPILE, { generateBind: false });
+    await hre.run(TASK_COMPILE);
   }
 
   try {
@@ -48,3 +48,16 @@ task(TASK_COMPILE).setAction(async function (args, hre, runSuper) {
 
   await runSuper();
 });
+
+task(TASK_CLEAN, "Clears the cache and deletes all artifacts").setAction(
+  async ({ global }: { global: boolean }, hre, runSuper) => {
+    if (!global)
+      try {
+        await new Generator(hre).clean();
+      } catch (e: any) {
+        throw new NomicLabsHardhatPluginError(pluginName, e.message);
+      }
+
+    await runSuper();
+  }
+);

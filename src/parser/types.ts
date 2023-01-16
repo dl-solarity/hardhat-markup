@@ -3,10 +3,15 @@ export interface ContractInfo extends BaseDescription {
   author?: string;
   functions?: FunctionsInfo;
   events?: EventsInfo;
+  errors?: ErrorsInfo;
 }
 
 export interface FunctionsInfo {
   [funcSig: string]: FunctionInfo;
+}
+
+export interface ErrorsInfo {
+  [errorSig: string]: ErrorInfo;
 }
 
 export interface EventsInfo {
@@ -17,6 +22,8 @@ export interface FunctionInfo extends BaseMethodInfo {
   stateMutability: string;
   returns?: Return[];
 }
+
+export interface ErrorInfo extends BaseMethodInfo {}
 
 export interface EventInfo extends BaseMethodInfo {}
 

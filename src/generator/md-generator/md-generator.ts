@@ -2,8 +2,10 @@ import {
   ContractInfo,
   FunctionsInfo,
   EventsInfo,
+  ErrorsInfo,
   FunctionInfo,
   EventInfo,
+  ErrorInfo,
   BaseDescription,
   Param,
   Return,
@@ -37,8 +39,18 @@ class MDGenerator {
     if (events) {
       contractTags.push(this.createHeaderTag("Events info", TOPIC_H_SIZE));
 
-      Object.keys(events).forEach((eventSig: string) => {
-        this.generateEventBlock(contractTags, eventSig, events[eventSig]);
+      Object.keys(events).forEach((eventSign: string) => {
+        this.generateEventBlock(contractTags, eventSign, events[eventSign]);
+      });
+    }
+
+    const errors: ErrorsInfo | undefined = contractInfo.errors;
+
+    if (errors) {
+      contractTags.push(this.createHeaderTag("Errors info", TOPIC_H_SIZE));
+
+      Object.keys(errors).forEach((errorSign: string) => {
+        this.generateEventBlock(contractTags, errorSign, errors[errorSign]);
       });
     }
 
@@ -47,8 +59,8 @@ class MDGenerator {
     if (functions) {
       contractTags.push(this.createHeaderTag("Functions info", TOPIC_H_SIZE));
 
-      Object.keys(functions).forEach((funcSig: string) => {
-        this.generateFunctionBlock(contractTags, funcSig, functions[funcSig]);
+      Object.keys(functions).forEach((funcSign: string) => {
+        this.generateFunctionBlock(contractTags, funcSign, functions[funcSign]);
       });
     }
 
@@ -78,11 +90,11 @@ class MDGenerator {
     }
   }
 
-  generateEventBlock(contractTags: any[], eventSig: string, eventInfo: EventInfo) {
-    contractTags.push(this.createHeaderTag(`${eventInfo.name} function`, FUNCTION_NAME_H_SIZE));
+  generateEventBlock(contractTags: any[], eventSign: string, eventInfo: EventInfo) {
+    contractTags.push(this.createHeaderTag(`${eventInfo.name} event`, FUNCTION_NAME_H_SIZE));
 
     contractTags.push(
-      this.createParagraphTag(`${this.getBoldStr("Event signature:")} ${this.getInlineCodeStr(eventSig)}`)
+      this.createParagraphTag(`${this.getBoldStr("Event signature:")} ${this.getInlineCodeStr(eventSign)}`)
     );
 
     this.generateBaseDescriptionBlock(contractTags, eventInfo);
@@ -91,6 +103,22 @@ class MDGenerator {
       contractTags.push(this.createHeaderTag("Parameters description", FUNCTION_INSIDE_H_SIZE));
 
       this.generateParamsBlock(contractTags, eventInfo.params);
+    }
+  }
+
+  generateErrorBlock(contractTags: any[], errorSign: string, errorInfo: ErrorInfo) {
+    contractTags.push(this.createHeaderTag(`${errorInfo.name} error`, FUNCTION_NAME_H_SIZE));
+
+    contractTags.push(
+      this.createParagraphTag(`${this.getBoldStr("Error signature:")} ${this.getInlineCodeStr(errorSign)}`)
+    );
+
+    this.generateBaseDescriptionBlock(contractTags, errorInfo);
+
+    if (errorInfo.params) {
+      contractTags.push(this.createHeaderTag("Parameters description", FUNCTION_INSIDE_H_SIZE));
+
+      this.generateParamsBlock(contractTags, errorInfo.params);
     }
   }
 

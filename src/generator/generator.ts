@@ -4,6 +4,7 @@ import { ContractInfo } from "../parser/types";
 import { MDGenerator } from "./md-generator/md-generator";
 
 const path = require("path");
+const fs = require("fs");
 const fsp = require("fs/promises");
 
 module.exports = class Generator {
@@ -48,16 +49,6 @@ module.exports = class Generator {
     await this.generateMDs(names);
   }
 
-  _contains(pathList: any, source: any) {
-    const isSubPath = (parent: string, child: string) => {
-      const parentTokens = parent.split(path.sep).filter((i) => i.length);
-      const childTokens = child.split(path.sep).filter((i) => i.length);
-      return parentTokens.every((t, i) => childTokens[i] === t);
-    };
-
-    return pathList === undefined ? false : pathList.some((p: any) => isSubPath(p, source));
-  }
-
   async generateMDs(artifactNames: string[]) {
     for (const contractName of artifactNames) {
       const [source, name] = contractName.split(":");
@@ -77,5 +68,29 @@ module.exports = class Generator {
       const mdInfo = `${this.outDir}/${name}.md`;
       await fsp.writeFile(mdInfo, this.mdGenerator.generateContractMDStr(contractInfo));
     }
+  }
+
+  async clean() {
+    if (!fs.existsSync(this.outDir)) {
+      return;
+    }
+
+    const dirStats = await fsp.stat(this.outDir);
+
+    if (!dirStats.isDirectory()) {
+      throw new Error(`outdir is not a directory: ${this.outDir}`);
+    }
+
+    await fsp.rm(this.outDir, { recursive: true });
+  }
+
+  _contains(pathList: any, source: any) {
+    const isSubPath = (parent: string, child: string) => {
+      const parentTokens = parent.split(path.sep).filter((i) => i.length);
+      const childTokens = child.split(path.sep).filter((i) => i.length);
+      return parentTokens.every((t, i) => childTokens[i] === t);
+    };
+
+    return pathList === undefined ? false : pathList.some((p: any) => isSubPath(p, source));
   }
 };
