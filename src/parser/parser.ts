@@ -235,7 +235,13 @@ class Parser {
   }
 
   private getSignRecursive(funcAbi: any): string {
-    return funcAbi.components ? `(${funcAbi.components.map((el: any) => this.getSignRecursive(el))})` : funcAbi.type;
+    if (funcAbi.components) {
+      const tupleArrSufix = funcAbi.type == "tuple[]" ? "[]" : "";
+
+      return `(${funcAbi.components.map((el: any) => this.getSignRecursive(el))})${tupleArrSufix}`;
+    }
+
+    return funcAbi.type;
   }
 
   private getStateMutabilityByName(abi: any, name: string): string | undefined {
