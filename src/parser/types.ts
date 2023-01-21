@@ -29,6 +29,7 @@ export interface ErrorInfo extends BaseMethodInfo {}
 export interface EventInfo extends BaseMethodInfo {}
 
 export interface BaseMethodInfo extends BaseDescription {
+  methodAbi: any;
   params?: Param[];
 }
 
@@ -38,13 +39,14 @@ export interface BaseDescription {
   details?: string;
 }
 
-export interface Param {
-  paramName: string;
-  paramDescription: string;
+export interface Param extends BaseElement {
   isIndexed?: boolean;
 }
 
-export interface Return {
-  returnName: string;
-  returnDescription: string;
+export interface Return extends BaseElement {}
+
+export interface BaseElement {
+  name: string;
+  type: string;
+  description: string;
 }

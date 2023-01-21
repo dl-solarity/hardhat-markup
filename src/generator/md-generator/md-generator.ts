@@ -7,8 +7,7 @@ import {
   EventInfo,
   ErrorInfo,
   BaseDescription,
-  Param,
-  Return,
+  BaseElement,
 } from "../../parser/types";
 import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE } from "./constants";
 import { MDConstructor } from "./md-constructor";
@@ -83,13 +82,13 @@ class MDGenerator {
     if (funcInfo.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateParamsBlock(mdConstructor, funcInfo.params);
+      this.generateElementsBlock(mdConstructor, funcInfo.params);
     }
 
     if (funcInfo.returns) {
       mdConstructor.addParagraphTag("Return values:");
 
-      this.generateReturnsBlock(mdConstructor, funcInfo.returns);
+      this.generateElementsBlock(mdConstructor, funcInfo.returns);
     }
   }
 
@@ -102,7 +101,7 @@ class MDGenerator {
     if (eventInfo.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateParamsBlock(mdConstructor, eventInfo.params);
+      this.generateElementsBlock(mdConstructor, eventInfo.params);
     }
   }
 
@@ -115,28 +114,18 @@ class MDGenerator {
     if (errorInfo.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateParamsBlock(mdConstructor, errorInfo.params);
+      this.generateElementsBlock(mdConstructor, errorInfo.params);
     }
   }
 
-  generateParamsBlock(mdConstructor: MDConstructor, params: Param[]) {
+  generateElementsBlock(mdConstructor: MDConstructor, elements: BaseElement[]) {
     const raws: string[][] = [];
 
-    params.map((param: Param) => {
-      raws.push([param.paramName, param.paramDescription]);
+    elements.map((el: BaseElement) => {
+      raws.push([el.name, el.type, el.description]);
     });
 
-    mdConstructor.addTableTag(["Name", "Description"], raws);
-  }
-
-  generateReturnsBlock(mdConstructor: MDConstructor, returns: Return[]) {
-    const raws: string[][] = [];
-
-    returns.map((returnEl: Return) => {
-      raws.push([returnEl.returnName, returnEl.returnDescription]);
-    });
-
-    mdConstructor.addTableTag(["Name", "Description"], raws);
+    mdConstructor.addTableTag(["Name", "Type", "Description"], raws);
   }
 
   generateBaseDescriptionBlock(mdConstructor: MDConstructor, baseInfo: BaseDescription) {

@@ -48,29 +48,25 @@ class Parser {
   parseFunctionsInfo(devDoc: any, userDoc: any, abi: any, evmInfo: any): FunctionsInfo {
     const functionsInfo: FunctionsInfo = {};
 
-    this.parseSignatures(abi, FUNCTION_TYPE).forEach((functionSign) => {
-      const functionName = this.getNameFromSignature(functionSign);
-      const stateMutability = this.getStateMutabilityByName(abi, functionName);
+    this.getAbisByType(abi, FUNCTION_TYPE).forEach((currentAbi: any) => {
+      const currentSign = this.parseMethodSignature(currentAbi);
 
-      if (!stateMutability) {
-        throw new Error(`Failed to parse state mutability info for ${functionSign} function`);
-      }
+      const devDocFunctionInfo = devDoc.methods ? devDoc.methods[currentSign] : undefined;
+      const userDocFunctionInfo = userDoc.methods ? userDoc.methods[currentSign] : undefined;
 
-      const devDocFunctionInfo = devDoc.methods ? devDoc.methods[functionSign] : undefined;
-      const userDocFunctionInfo = userDoc.methods ? userDoc.methods[functionSign] : undefined;
-
-      const funcSelector = evmInfo.methodIdentifiers[functionSign];
+      const funcSelector = evmInfo.methodIdentifiers[currentSign];
 
       if (!funcSelector) {
-        throw new Error(`Failed to parse selector for ${functionSign} function`);
+        throw new Error(`Failed to parse selector for ${currentSign} function`);
       }
 
-      functionsInfo[functionSign] = this.parseFunctionInfo(
-        functionName,
-        stateMutability,
+      functionsInfo[currentSign] = this.parseFunctionInfo(
+        currentAbi.name,
+        currentAbi.stateMutability,
         funcSelector,
         devDocFunctionInfo,
-        userDocFunctionInfo
+        userDocFunctionInfo,
+        currentAbi
       );
     });
 
@@ -80,38 +76,33 @@ class Parser {
   parseEventsInfo(devDoc: any, userDoc: any, abi: any): EventsInfo {
     const eventsInfo: EventsInfo = {};
 
-    this.parseSignatures(abi, EVENT_TYPE).forEach((eventSign) => {
-      const devDocEventInfo = devDoc.events ? devDoc.events[eventSign] : undefined;
-      const userDocEventInfo = userDoc.events ? userDoc.events[eventSign] : undefined;
+    this.getAbisByType(abi, EVENT_TYPE).forEach((currentAbi: any) => {
+      const currentSign = this.parseMethodSignature(currentAbi);
 
-      const eventName = this.getNameFromSignature(eventSign);
-      const eventInfo: EventInfo = this.parseEventInfo(eventName, devDocEventInfo, userDocEventInfo);
+      const devDocEventInfo = devDoc.events ? devDoc.events[currentSign] : undefined;
+      const userDocEventInfo = userDoc.events ? userDoc.events[currentSign] : undefined;
 
-      if (eventInfo.params) {
-        this.fillIndexedFields(eventName, eventInfo.params, abi);
-      }
+      const eventInfo: EventInfo = this.parseEventInfo(currentAbi.name, devDocEventInfo, userDocEventInfo, currentAbi);
 
-      eventsInfo[eventSign] = eventInfo;
+      eventsInfo[currentSign] = eventInfo;
     });
 
     return eventsInfo;
   }
 
   parseErrorsInfo(devDoc: any, userDoc: any, abi: any): ErrorsInfo {
-    const eventsInfo: ErrorsInfo = {};
+    const errorsInfo: ErrorsInfo = {};
 
-    this.parseSignatures(abi, ERROR_TYPE).forEach((errorSign) => {
-      const devDocErrorInfo = devDoc.errors ? devDoc.errors[errorSign][0] : undefined;
-      const userDocErrorInfo = userDoc.errors ? userDoc.errors[errorSign][0] : undefined;
+    this.getAbisByType(abi, ERROR_TYPE).forEach((currentAbi: any) => {
+      const currentSign = this.parseMethodSignature(currentAbi);
 
-      eventsInfo[errorSign] = this.parseEventInfo(
-        this.getNameFromSignature(errorSign),
-        devDocErrorInfo,
-        userDocErrorInfo
-      );
+      const devDocErrorInfo = devDoc.errors ? devDoc.errors[currentSign][0] : undefined;
+      const userDocErrorInfo = userDoc.errors ? userDoc.errors[currentSign][0] : undefined;
+
+      errorsInfo[currentSign] = this.parseErrorInfo(currentAbi.name, devDocErrorInfo, userDocErrorInfo, currentAbi);
     });
 
-    return eventsInfo;
+    return errorsInfo;
   }
 
   parseFunctionInfo(
@@ -119,15 +110,16 @@ class Parser {
     stateMutability: string,
     selector: string,
     devDoc: any,
-    userDoc: any
+    userDoc: any,
+    functionAbi: any
   ): FunctionInfo {
     const functionInfo: FunctionInfo = {
       stateMutability,
       selector,
-      ...this.parseBaseMethodInfo(functionName, devDoc, userDoc),
+      ...this.parseBaseMethodInfo(functionName, devDoc, userDoc, functionAbi),
     };
 
-    const returns = this.parseReturns(devDoc);
+    const returns = this.parseReturns(devDoc, functionAbi);
 
     if (returns) {
       functionInfo.returns = returns;
@@ -136,20 +128,21 @@ class Parser {
     return functionInfo;
   }
 
-  parseEventInfo(eventName: string, devDoc: any, userDoc: any): EventInfo {
-    return this.parseBaseMethodInfo(eventName, devDoc, userDoc);
+  parseEventInfo(eventName: string, devDoc: any, userDoc: any, eventAbi: any): EventInfo {
+    return this.parseBaseMethodInfo(eventName, devDoc, userDoc, eventAbi);
   }
 
-  parseErrorInfo(errorName: string, devDoc: any, userDoc: any): EventInfo {
-    return this.parseBaseMethodInfo(errorName, devDoc, userDoc);
+  parseErrorInfo(errorName: string, devDoc: any, userDoc: any, errorAbi: any): EventInfo {
+    return this.parseBaseMethodInfo(errorName, devDoc, userDoc, errorAbi);
   }
 
-  parseBaseMethodInfo(methodName: string, devDoc: any, userDoc: any): BaseMethodInfo {
+  parseBaseMethodInfo(methodName: string, devDoc: any, userDoc: any, methodAbi: any): BaseMethodInfo {
     const baseMethodInfo: BaseMethodInfo = {
+      methodAbi,
       ...this.parseBaseDescription(methodName, devDoc, userDoc),
     };
 
-    const params = this.parseParams(devDoc);
+    const params = this.parseParams(devDoc, methodAbi);
 
     if (params) {
       baseMethodInfo.params = params;
@@ -172,13 +165,31 @@ class Parser {
     return baseDesc;
   }
 
-  parseParams(devDoc: any): Param[] | undefined {
+  parseParams(devDoc: any, methodAbi: any): Param[] | undefined {
     if (devDoc && devDoc.params) {
       const paramsArr: Param[] = [];
 
-      Object.keys(devDoc.params).forEach((paramName) => {
-        paramsArr.push({ paramName, paramDescription: devDoc.params[paramName] });
-      });
+      if (methodAbi.inputs) {
+        methodAbi.inputs.forEach((param: any) => {
+          const paramDesc = devDoc.params[param.name];
+
+          if (!paramDesc) {
+            return;
+          }
+
+          const paramToAdd: Param = {
+            name: param.name,
+            type: param.type,
+            description: paramDesc,
+          };
+
+          if (methodAbi.type == EVENT_TYPE) {
+            paramToAdd.isIndexed = param.indexed;
+          }
+
+          paramsArr.push(paramToAdd);
+        });
+      }
 
       return paramsArr;
     }
@@ -186,13 +197,25 @@ class Parser {
     return undefined;
   }
 
-  parseReturns(devDoc: any): Return[] | undefined {
+  parseReturns(devDoc: any, methodAbi: any): Return[] | undefined {
     if (devDoc && devDoc.returns) {
       const returnsArr: Return[] = [];
 
-      Object.keys(devDoc.returns).forEach((returnName) => {
-        returnsArr.push({ returnName, returnDescription: devDoc.returns[returnName] });
-      });
+      if (methodAbi.outputs) {
+        methodAbi.outputs.forEach((output: any, outIndex: number) => {
+          const outName = output.name ? output.name : `_${outIndex}`;
+
+          if (!devDoc.returns[outName]) {
+            return;
+          }
+
+          returnsArr.push({
+            name: outName,
+            type: output.type,
+            description: devDoc.returns[outName],
+          });
+        });
+      }
 
       return returnsArr;
     }
@@ -200,38 +223,8 @@ class Parser {
     return undefined;
   }
 
-  fillIndexedFields(eventName: string, params: Param[], abi: any) {
-    const neededAbi = this.getAbiByName(abi, eventName, EVENT_TYPE);
-
-    neededAbi.inputs.map((el: any) => {
-      const neededIndex = params.findIndex((param: Param) => {
-        return param.paramName == el.name;
-      });
-
-      if (neededIndex == -1) {
-        throw new Error(`Failed to parse indexed params for ${eventName} event`);
-      }
-
-      params[neededIndex].isIndexed = el.indexed;
-    });
-  }
-
-  parseSignatures(abi: any, filterType: string): string[] {
-    const signatures: string[] = [];
-
-    const filteredAbis: any = abi.filter((el: any) => {
-      return el.type == filterType;
-    });
-
-    filteredAbis.forEach((el: any) => {
-      signatures.push(this.parseFunctionSignature(el));
-    });
-
-    return signatures;
-  }
-
-  parseFunctionSignature(functionAbi: any): string {
-    return `${functionAbi.name}(${functionAbi.inputs.map((inputElem: any) => this.getSignRecursive(inputElem))})`;
+  parseMethodSignature(methodAbi: any): string {
+    return `${methodAbi.name}(${methodAbi.inputs.map((inputElem: any) => this.getSignRecursive(inputElem))})`;
   }
 
   private getSignRecursive(funcAbi: any): string {
@@ -244,20 +237,22 @@ class Parser {
     return funcAbi.type;
   }
 
-  private getStateMutabilityByName(abi: any, name: string): string | undefined {
-    const neededAbi = this.getAbiByName(abi, name, FUNCTION_TYPE);
+  private getAbisByType(abi: any, methotType: string): any[] {
+    const abis: any[] = [];
 
-    return neededAbi ? neededAbi.stateMutability : undefined;
+    abi.map((currentAbi: any) => {
+      if (currentAbi.type == methotType) {
+        abis.push(currentAbi);
+      }
+    });
+
+    return abis;
   }
 
   private getAbiByName(abi: any, name: string, methodType: string): any | undefined {
     return abi.find((el: any) => {
       return el.type == methodType && el.name == name;
     });
-  }
-
-  private getNameFromSignature(sign: string): string {
-    return sign.substring(0, sign.indexOf("("));
   }
 }
 
