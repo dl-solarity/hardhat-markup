@@ -10,6 +10,7 @@ import {
   EventsInfo,
   FunctionsInfo,
   ContractInfo,
+  FullMethodSign,
 } from "./types";
 
 class Parser {
@@ -62,7 +63,6 @@ class Parser {
 
       functionsInfo[currentSign] = this.parseFunctionInfo(
         currentAbi.name,
-        currentAbi.stateMutability,
         funcSelector,
         devDocFunctionInfo,
         userDocFunctionInfo,
@@ -105,16 +105,8 @@ class Parser {
     return errorsInfo;
   }
 
-  parseFunctionInfo(
-    functionName: string,
-    stateMutability: string,
-    selector: string,
-    devDoc: any,
-    userDoc: any,
-    functionAbi: any
-  ): FunctionInfo {
+  parseFunctionInfo(functionName: string, selector: string, devDoc: any, userDoc: any, functionAbi: any): FunctionInfo {
     const functionInfo: FunctionInfo = {
-      stateMutability,
       selector,
       ...this.parseBaseMethodInfo(functionName, devDoc, userDoc, functionAbi),
     };
@@ -139,6 +131,7 @@ class Parser {
   parseBaseMethodInfo(methodName: string, devDoc: any, userDoc: any, methodAbi: any): BaseMethodInfo {
     const baseMethodInfo: BaseMethodInfo = {
       methodAbi,
+      fullMethodSign: this.parseFullMethodSign(methodAbi),
       ...this.parseBaseDescription(methodName, devDoc, userDoc),
     };
 
@@ -227,6 +220,44 @@ class Parser {
     return `${methodAbi.name}(${methodAbi.inputs.map((inputElem: any) => this.getSignRecursive(inputElem))})`;
   }
 
+  parseFullMethodSign(methodAbi: any): FullMethodSign {
+    const fullMethodSign: FullMethodSign = { methodType: methodAbi.type, methodName: methodAbi.name };
+
+    const params: string[] = methodAbi.inputs.map((inputElem: any) => {
+      let isIndexed: string = "";
+
+      if (fullMethodSign.methodType == EVENT_TYPE) {
+        isIndexed = inputElem.indexed ? " indexed" : "";
+      }
+
+      return `${inputElem.type}${isIndexed} ${inputElem.name}`;
+    });
+
+    if (params.length > 0) {
+      fullMethodSign.parameters = params;
+    }
+
+    if (fullMethodSign.methodType == FUNCTION_TYPE) {
+      const modifiers: string[] = this.getFunctionModifiers(methodAbi.stateMutability).split(" ");
+
+      const returns: string[] = methodAbi.outputs.map((outputElem: any) => {
+        const outputName = outputElem.name ? ` ${outputElem.name}` : "";
+
+        return `${outputElem.type}${outputName}`;
+      });
+
+      if (returns.length > 0) {
+        modifiers.push("returns");
+
+        fullMethodSign.returns = returns;
+      }
+
+      fullMethodSign.modifiers = modifiers;
+    }
+
+    return fullMethodSign;
+  }
+
   private getSignRecursive(funcAbi: any): string {
     if (funcAbi.components) {
       const tupleArrSufix = funcAbi.type == "tuple[]" ? "[]" : "";
@@ -249,10 +280,19 @@ class Parser {
     return abis;
   }
 
-  private getAbiByName(abi: any, name: string, methodType: string): any | undefined {
-    return abi.find((el: any) => {
-      return el.type == methodType && el.name == name;
-    });
+  private getFunctionModifiers(stateMutability: string): string {
+    switch (stateMutability) {
+      case "payable":
+        return "external payable";
+      case "nonpayable":
+        return "external";
+      case "view":
+        return "external view";
+      case "pure":
+        return "external pure";
+      default:
+        throw new Error(`Failed to get function modifiers from ${stateMutability}`);
+    }
   }
 }
 

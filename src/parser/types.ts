@@ -19,7 +19,6 @@ export interface EventsInfo {
 }
 
 export interface FunctionInfo extends BaseMethodInfo {
-  stateMutability: string;
   selector: string;
   returns?: Return[];
 }
@@ -30,7 +29,16 @@ export interface EventInfo extends BaseMethodInfo {}
 
 export interface BaseMethodInfo extends BaseDescription {
   methodAbi: any;
+  fullMethodSign: FullMethodSign;
   params?: Param[];
+}
+
+export interface FullMethodSign {
+  methodType: string;
+  methodName: string;
+  modifiers?: string[];
+  parameters?: string[];
+  returns?: string[];
 }
 
 export interface BaseDescription {

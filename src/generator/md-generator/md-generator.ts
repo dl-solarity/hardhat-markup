@@ -8,8 +8,10 @@ import {
   ErrorInfo,
   BaseDescription,
   BaseElement,
+  BaseMethodInfo,
+  FullMethodSign,
 } from "../../parser/types";
-import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE } from "./constants";
+import { CONTRACT_NAME_H_SIZE, FULL_METHOD_SIGN_MAX_LENGTH, FUNCTION_NAME_H_SIZE } from "./constants";
 import { MDConstructor } from "./md-constructor";
 
 class MDGenerator {
@@ -37,7 +39,7 @@ class MDGenerator {
         mdConstructor.addHeaderTag("Events info");
 
         keys.forEach((eventSign: string) => {
-          this.generateEventBlock(mdConstructor, eventSign, events[eventSign]);
+          this.generateEventBlock(mdConstructor, events[eventSign]);
         });
       }
     }
@@ -51,7 +53,7 @@ class MDGenerator {
         mdConstructor.addHeaderTag("Errors info");
 
         keys.forEach((errorSign: string) => {
-          this.generateErrorBlock(mdConstructor, errorSign, errors[errorSign]);
+          this.generateErrorBlock(mdConstructor, errors[errorSign]);
         });
       }
     }
@@ -65,7 +67,7 @@ class MDGenerator {
         mdConstructor.addHeaderTag("Functions info");
 
         keys.forEach((funcSign: string) => {
-          this.generateFunctionBlock(mdConstructor, funcSign, functions[funcSign]);
+          this.generateFunctionBlock(mdConstructor, functions[funcSign]);
         });
       }
     }
@@ -73,17 +75,10 @@ class MDGenerator {
     return mdConstructor.getContractTagsStr();
   }
 
-  generateFunctionBlock(mdConstructor: MDConstructor, funcSign: string, funcInfo: FunctionInfo) {
-    mdConstructor.addHeaderTag(`${funcInfo.name} (0x${funcInfo.selector})`, FUNCTION_NAME_H_SIZE);
-    mdConstructor.addCodeTag([`function ${funcSign} ${this.getFunctionModifiers(funcInfo.stateMutability)}`]);
+  generateFunctionBlock(mdConstructor: MDConstructor, funcInfo: FunctionInfo) {
+    const funcHeader = `${funcInfo.name} (0x${funcInfo.selector})`;
 
-    this.generateBaseDescriptionBlock(mdConstructor, funcInfo);
-
-    if (funcInfo.params) {
-      mdConstructor.addParagraphTag("Parameters:");
-
-      this.generateElementsBlock(mdConstructor, funcInfo.params);
-    }
+    this.generateBaseMethodBlock(mdConstructor, funcHeader, funcInfo);
 
     if (funcInfo.returns) {
       mdConstructor.addParagraphTag("Return values:");
@@ -92,29 +87,24 @@ class MDGenerator {
     }
   }
 
-  generateEventBlock(mdConstructor: MDConstructor, eventSign: string, eventInfo: EventInfo) {
-    mdConstructor.addHeaderTag(`${eventInfo.name} event`, FUNCTION_NAME_H_SIZE);
-    mdConstructor.addCodeTag([`event ${eventSign}`]);
-
-    this.generateBaseDescriptionBlock(mdConstructor, eventInfo);
-
-    if (eventInfo.params) {
-      mdConstructor.addParagraphTag("Parameters:");
-
-      this.generateElementsBlock(mdConstructor, eventInfo.params);
-    }
+  generateEventBlock(mdConstructor: MDConstructor, eventInfo: EventInfo) {
+    this.generateBaseMethodBlock(mdConstructor, `${eventInfo.name} event`, eventInfo);
   }
 
-  generateErrorBlock(mdConstructor: MDConstructor, errorSign: string, errorInfo: ErrorInfo) {
-    mdConstructor.addHeaderTag(`${errorInfo.name} error`, FUNCTION_NAME_H_SIZE);
-    mdConstructor.addCodeTag([`error ${errorSign}`]);
+  generateErrorBlock(mdConstructor: MDConstructor, errorInfo: ErrorInfo) {
+    this.generateBaseMethodBlock(mdConstructor, `${errorInfo.name} error`, errorInfo);
+  }
 
-    this.generateBaseDescriptionBlock(mdConstructor, errorInfo);
+  generateBaseMethodBlock(mdConstructor: MDConstructor, methodHeader: string, methodInfo: BaseMethodInfo) {
+    mdConstructor.addHeaderTag(methodHeader, FUNCTION_NAME_H_SIZE);
+    mdConstructor.addCodeTag(this.getFullMethodSignArr(methodInfo.fullMethodSign));
 
-    if (errorInfo.params) {
+    this.generateBaseDescriptionBlock(mdConstructor, methodInfo);
+
+    if (methodInfo.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateElementsBlock(mdConstructor, errorInfo.params);
+      this.generateElementsBlock(mdConstructor, methodInfo.params);
     }
   }
 
@@ -138,19 +128,65 @@ class MDGenerator {
     }
   }
 
-  getFunctionModifiers(stateMutability: string): string {
-    switch (stateMutability) {
-      case "payable":
-        return "external payable";
-      case "nonpayable":
-        return "external";
-      case "view":
-        return "external view";
-      case "pure":
-        return "external pure";
-      default:
-        throw new Error(`Failed to get function modifiers from ${stateMutability}`);
+  getFullMethodSignArr(fullMethodSign: FullMethodSign, isPretty: boolean = true): string[] {
+    const modifiersArr: string[] = fullMethodSign.modifiers ? fullMethodSign.modifiers : [];
+    const parametersArr: string[] = fullMethodSign.parameters ? fullMethodSign.parameters : [];
+    const returnsArr: string[] = fullMethodSign.returns ? fullMethodSign.returns : [];
+
+    const fullMethodSignArr: string[] = [];
+
+    const methodStartStr: string = `${fullMethodSign.methodType} ${fullMethodSign.methodName}(`;
+    const methodEndStr: string = `${modifiersArr.length > 0 ? ` ${modifiersArr.join(" ")}` : ""}${
+      returnsArr.length > 0 ? ` (${returnsArr.join(", ")})` : ""
+    }`;
+
+    const fullMethodSignWithoutPretty: string = `${methodStartStr}${parametersArr.join(", ")})${methodEndStr};`;
+
+    if (isPretty && fullMethodSignWithoutPretty.length > FULL_METHOD_SIGN_MAX_LENGTH) {
+      fullMethodSignArr.push(`${methodStartStr}`);
+
+      if (parametersArr.length > 0) {
+        fullMethodSignArr.push(...this.getFormattedElementsArr(parametersArr));
+        fullMethodSignArr.push(")");
+      } else {
+        this.concatToLastElement(fullMethodSignArr, ")");
+      }
+
+      if (methodEndStr.length > FULL_METHOD_SIGN_MAX_LENGTH) {
+        fullMethodSignArr.push(...this.getFormattedElementsArr(modifiersArr, "", "("));
+        fullMethodSignArr.push(...this.getFormattedElementsArr(returnsArr, ",", "", "\t\t"));
+        fullMethodSignArr.push("\t)");
+      } else {
+        this.concatToLastElement(fullMethodSignArr, methodEndStr);
+      }
+
+      this.concatToLastElement(fullMethodSignArr, ";");
+    } else {
+      fullMethodSignArr.push(fullMethodSignWithoutPretty);
     }
+
+    return fullMethodSignArr;
+  }
+
+  private concatToLastElement(elementsArr: string[], stringToConcat: string) {
+    elementsArr[elementsArr.length - 1] = elementsArr[elementsArr.length - 1].concat(stringToConcat);
+  }
+
+  private getFormattedElementsArr(
+    elementsArr: string[],
+    beforeLastElementSuffix: string = ",",
+    lastElementSuffix: string = "",
+    tabPrefix: string = "\t"
+  ): string[] {
+    const formattedArr: string[] = [];
+
+    elementsArr.forEach((elementStr: string, index: number) => {
+      formattedArr.push(
+        `${tabPrefix}${elementStr}${index != elementsArr.length - 1 ? beforeLastElementSuffix : lastElementSuffix}`
+      );
+    });
+
+    return formattedArr;
   }
 }
 
