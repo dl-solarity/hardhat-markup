@@ -48,7 +48,7 @@ module.exports = class Generator {
     for (const contractName of artifactNames) {
       const [source, name] = contractName.split(":");
 
-      this.verboseLog(`Start generating markup for ${name} contract`);
+      this.verboseLog(`Started generating markup for ${name} contract`);
 
       const buildInfo = (await this.artifacts.getBuildInfo(contractName))?.output.contracts[source][name];
 
@@ -57,12 +57,7 @@ module.exports = class Generator {
       }
 
       const { abi, devdoc, userdoc, evm } = buildInfo as any;
-
-      this.verboseLog(`Start parsing the information for the ${name} contract`);
-
       const contractInfo: ContractInfo = this.parser.parseContractInfo(name, devdoc, userdoc, abi, evm);
-
-      this.verboseLog(`Information about the contract has been successfully parsed`);
 
       const genDir = `${this.outDir}/${path.dirname(source)}`;
       const genPath = `${genDir}/${name}.md`;
@@ -70,7 +65,7 @@ module.exports = class Generator {
       await fsp.mkdir(genDir, { recursive: true });
       await fsp.writeFile(genPath, this.mdGenerator.generateContractMDStr(contractInfo));
 
-      this.verboseLog(`Markup for ${name} successfully generated`);
+      this.verboseLog(`Markup for ${name} is successfully generated`);
       this.verboseLog(`-------------------------------------------------------`);
     }
   }
