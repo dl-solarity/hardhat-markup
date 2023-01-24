@@ -10,48 +10,45 @@ const fsp = require("fs/promises");
 module.exports = class Generator {
   private artifacts: Artifacts;
   private outDir: string;
-  private only: string;
   private onlyFiles: string[];
   private skipFiles: string[];
+  private verbose: boolean;
   private parser: Parser;
   private mdGenerator: MDGenerator;
 
   constructor(hre: HardhatRuntimeEnvironment) {
     this.artifacts = hre.artifacts;
     this.outDir = path.resolve(hre.config.markup.outdir);
-    this.only = hre.config.markup.only;
     this.parser = new Parser();
     this.mdGenerator = new MDGenerator();
     this.onlyFiles = hre.config.markup.onlyFiles.map((p) => path.normalize(p));
     this.skipFiles = hre.config.markup.skipFiles.map((p) => path.normalize(p));
+    this.verbose = hre.config.markup.verbose;
   }
 
-  async generateAll() {
+  async generate() {
     console.log("\nGenerating markups...");
 
-    let names;
+    const _names = await this.artifacts.getAllFullyQualifiedNames();
 
-    if (this.only === "") {
-      const _names = await this.artifacts.getAllFullyQualifiedNames();
+    const filterer = (n: any) => {
+      const src = this.artifacts.readArtifactSync(n).sourceName;
 
-      const filterer = (n: any) => {
-        const src = this.artifacts.readArtifactSync(n).sourceName;
-        return (
-          (this.onlyFiles.length == 0 || this._contains(this.onlyFiles, src)) && !this._contains(this.skipFiles, src)
-        );
-      };
+      return (this.onlyFiles.length == 0 || this.contains(this.onlyFiles, src)) && !this.contains(this.skipFiles, src);
+    };
 
-      names = _names.filter(filterer);
-    } else {
-      names = [this.only];
-    }
+    const filtered: string[] = _names.filter(filterer);
 
-    await this.generateMDs(names);
+    await this.generateMDs(filtered);
+
+    return filtered;
   }
 
   async generateMDs(artifactNames: string[]) {
     for (const contractName of artifactNames) {
       const [source, name] = contractName.split(":");
+
+      this.verboseLog(`Start generating markup for ${name} contract`);
 
       const buildInfo = (await this.artifacts.getBuildInfo(contractName))?.output.contracts[source][name];
 
@@ -59,14 +56,22 @@ module.exports = class Generator {
         continue;
       }
 
-      await fsp.mkdir(this.outDir, { recursive: true });
-
       const { abi, devdoc, userdoc, evm } = buildInfo as any;
+
+      this.verboseLog(`Start parsing the information for the ${name} contract`);
 
       const contractInfo: ContractInfo = this.parser.parseContractInfo(name, devdoc, userdoc, abi, evm);
 
-      const mdInfo = `${this.outDir}/${name}.md`;
-      await fsp.writeFile(mdInfo, this.mdGenerator.generateContractMDStr(contractInfo));
+      this.verboseLog(`Information about the contract has been successfully parsed`);
+
+      const genDir = `${this.outDir}/${path.dirname(source)}`;
+      const genPath = `${genDir}/${name}.md`;
+
+      await fsp.mkdir(genDir, { recursive: true });
+      await fsp.writeFile(genPath, this.mdGenerator.generateContractMDStr(contractInfo));
+
+      this.verboseLog(`Markup for ${name} successfully generated`);
+      this.verboseLog(`-------------------------------------------------------`);
     }
   }
 
@@ -84,7 +89,7 @@ module.exports = class Generator {
     await fsp.rm(this.outDir, { recursive: true });
   }
 
-  _contains(pathList: any, source: any) {
+  private contains(pathList: any, source: any) {
     const isSubPath = (parent: string, child: string) => {
       const parentTokens = parent.split(path.sep).filter((i) => i.length);
       const childTokens = child.split(path.sep).filter((i) => i.length);
@@ -92,5 +97,11 @@ module.exports = class Generator {
     };
 
     return pathList === undefined ? false : pathList.some((p: any) => isSubPath(p, source));
+  }
+
+  private verboseLog(msg: string) {
+    if (this.verbose) {
+      console.log(msg);
+    }
   }
 };

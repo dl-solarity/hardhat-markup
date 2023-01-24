@@ -10,23 +10,26 @@ import { TASK_MARKUP, pluginName } from "./constants";
 import { ActionType } from "hardhat/types";
 
 interface BindingArgs {
-  output?: string;
-  only?: string;
-  compile: boolean;
+  outdir?: string;
+  markupVerbose?: boolean;
+  noCompile?: boolean;
 }
 
 extendConfig(getDefaultMarkupConfig);
 
-const markup: ActionType<BindingArgs> = async ({ output, only, compile }, hre) => {
-  hre.config.markup.outdir = output === undefined ? hre.config.markup.outdir : output;
-  hre.config.markup.only = only === undefined ? hre.config.markup.only : only;
+const markup: ActionType<BindingArgs> = async ({ outdir, markupVerbose, noCompile }, hre) => {
+  hre.config.markup.outdir = outdir === undefined ? hre.config.markup.outdir : outdir;
+  hre.config.markup.noCompile = !noCompile ? hre.config.markup.noCompile : noCompile;
+  hre.config.markup.verbose = !markupVerbose ? hre.config.markup.verbose : markupVerbose;
 
-  if (compile) {
+  if (!hre.config.markup.noCompile) {
     await hre.run(TASK_COMPILE);
   }
 
   try {
-    await new Generator(hre).generateAll();
+    const contracts = await new Generator(hre).generate();
+
+    console.log(`\nGenerated markups for ${contracts.length} contracts`);
   } catch (e: any) {
     throw new NomicLabsHardhatPluginError(pluginName, e.message);
   }
@@ -36,8 +39,8 @@ const markup: ActionType<BindingArgs> = async ({ output, only, compile }, hre) =
 
 task(TASK_MARKUP, "Generate markups for compiled contracts")
   .addOptionalParam("outdir", "Output directory for generated markups", undefined, types.string)
-  .addOptionalParam("only", "File name", undefined, types.string)
-  .addFlag("compile", "Compile smart contracts before the generation")
+  .addFlag("noCompile", "Disables contract compilation before generation")
+  .addFlag("markupVerbose", "Enables Hardhat-markup verbose logging")
   .setAction(markup);
 
 task(TASK_COMPILE).setAction(async function (args, hre, runSuper) {
