@@ -1,6 +1,6 @@
 {
   "name": "@dlsl/hardhat-markup",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -12,7 +12,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/distributedlab-solidity-library/hardhat-markup.git"
+    "url": "git+https://github.com/dl-solidity-library/hardhat-markup.git"
   },
   "keywords": [
     "ethereum",
@@ -27,9 +27,9 @@
   "author": "Distributed Lab",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/distributedlab-solidity-library/hardhat-markup/issues"
+    "url": "https://github.com/dl-solidity-library/hardhat-markup/issues"
   },
-  "homepage": "https://github.com/distributedlab-solidity-library/hardhat-markup#readme",
+  "homepage": "https://github.com/dl-solidity-library/hardhat-markup#readme",
   "peerDependencies": {
     "hardhat": "^2.10.0"
   },
