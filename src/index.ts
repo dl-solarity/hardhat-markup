@@ -9,7 +9,7 @@ import { getDefaultMarkupConfig } from "./config";
 import { TASK_MARKUP, pluginName } from "./constants";
 import { ActionType } from "hardhat/types";
 
-interface BindingArgs {
+interface MarkupArgs {
   outdir?: string;
   markupVerbose?: boolean;
   noCompile?: boolean;
@@ -17,7 +17,7 @@ interface BindingArgs {
 
 extendConfig(getDefaultMarkupConfig);
 
-const markup: ActionType<BindingArgs> = async ({ outdir, markupVerbose, noCompile }, hre) => {
+const markup: ActionType<MarkupArgs> = async ({ outdir, markupVerbose, noCompile }, hre) => {
   hre.config.markup.outdir = outdir === undefined ? hre.config.markup.outdir : outdir;
   hre.config.markup.noCompile = !noCompile ? hre.config.markup.noCompile : noCompile;
   hre.config.markup.verbose = !markupVerbose ? hre.config.markup.verbose : markupVerbose;
@@ -33,8 +33,6 @@ const markup: ActionType<BindingArgs> = async ({ outdir, markupVerbose, noCompil
   } catch (e: any) {
     throw new NomicLabsHardhatPluginError(pluginName, e.message);
   }
-
-  console.log(`\nMarkups generated`);
 };
 
 task(TASK_MARKUP, "Generate markups for compiled contracts")
