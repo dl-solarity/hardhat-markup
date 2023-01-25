@@ -39,6 +39,8 @@ module.exports = class Generator {
 
     const filtered: string[] = _names.filter(filterer);
 
+    this.verboseLog(`\n${_names.length} compiled contracts found, skipping ${_names.length - filtered.length} of them`);
+
     await this.generateMDs(filtered);
 
     return filtered;
@@ -48,7 +50,7 @@ module.exports = class Generator {
     for (const contractName of artifactNames) {
       const [source, name] = contractName.split(":");
 
-      this.verboseLog(`Started generating markup for ${name} contract`);
+      this.verboseLog(`\nStarted generating markup for ${name} contract`);
 
       const buildInfo = (await this.artifacts.getBuildInfo(contractName))?.output.contracts[source][name];
 
@@ -66,7 +68,6 @@ module.exports = class Generator {
       await fsp.writeFile(genPath, this.mdGenerator.generateContractMDStr(contractInfo));
 
       this.verboseLog(`Markup for ${name} is successfully generated`);
-      this.verboseLog(`-------------------------------------------------------`);
     }
   }
 

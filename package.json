@@ -1,7 +1,7 @@
 {
   "name": "@dlsl/hardhat-markup",
   "version": "1.0.0-rc.1",
-  "description": "Generation of smart contract markups",
+  "description": "Customizable markdown smart contracts documentation",
   "scripts": {
     "install": "npx husky install",
     "compile": "tsc --build .",
