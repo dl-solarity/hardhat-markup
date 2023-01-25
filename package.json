@@ -1,0 +1,46 @@
+{
+  "name": "@dlsl/hardhat-markup",
+  "version": "1.0.0-rc.1",
+  "description": "Generation of smart contract markups",
+  "scripts": {
+    "install": "npx husky install",
+    "compile": "tsc --build .",
+    "build-local": "npm run compile && npm run lint-fix && bash ./scripts/build-local.sh",
+    "clean": "bash ./scripts/clean.sh",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
+    "publish-to-npm": "npm run compile && npm run lint-fix && bash ./scripts/publish.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/distributedlab-solidity-library/hardhat-markup.git"
+  },
+  "keywords": [
+    "ethereum",
+    "solidity",
+    "smart-contracts",
+    "hardhat",
+    "hardhat-plugin",
+    "distributedlab",
+    "documentation",
+    "markup"
+  ],
+  "author": "Distributed Lab",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/distributedlab-solidity-library/hardhat-markup/issues"
+  },
+  "homepage": "https://github.com/distributedlab-solidity-library/hardhat-markup#readme",
+  "peerDependencies": {
+    "hardhat": "^2.10.0"
+  },
+  "devDependencies": {
+    "hardhat": "^2.10.0",
+    "husky": "^7.0.2",
+    "lodash": "^4.17.21",
+    "prettier": "^2.7.1",
+    "ts-node": "^8.1.0",
+    "typescript": "~4.5.2",
+    "json2md": "^2.0.0"
+  }
+}
