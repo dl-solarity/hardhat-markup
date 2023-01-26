@@ -17,11 +17,11 @@ class Parser {
   parseContractInfo(name: string, devDoc: any, userDoc: any, abi: any, evmInfo: any): ContractInfo {
     const contractInfo: ContractInfo = this.parseBaseDescription(name, devDoc, userDoc);
 
-    if (devDoc.author) {
+    if (devDoc && devDoc.author) {
       contractInfo.author = devDoc.author;
     }
 
-    if (devDoc.title) {
+    if (devDoc && devDoc.title) {
       contractInfo.title = devDoc.title;
     }
 
