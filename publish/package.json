@@ -1,6 +1,6 @@
 {
   "name": "@dlsl/hardhat-markup",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.4",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -30,12 +30,14 @@
     "url": "https://github.com/dl-solidity-library/hardhat-markup/issues"
   },
   "homepage": "https://github.com/dl-solidity-library/hardhat-markup#readme",
+  "dependencies": {
+    "json2md": "^2.0.0"
+  },
   "peerDependencies": {
     "hardhat": "^2.10.0"
   },
   "devDependencies": {
     "lodash": "^4.17.21",
-    "hardhat": "^2.10.0",
-    "json2md": "^2.0.0"
+    "hardhat": "^2.10.0"
   }
 }
