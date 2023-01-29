@@ -1,4 +1,4 @@
-import { ERROR_TYPE, EVENT_TYPE, FUNCTION_TYPE } from "./constants";
+import { DEFAULT_LICENSE, ERROR_TYPE, EVENT_TYPE, FUNCTION_TYPE } from "./constants";
 import {
   Return,
   Param,
@@ -11,33 +11,50 @@ import {
   FunctionsInfo,
   ContractInfo,
   FullMethodSign,
+  ContractBuildData,
 } from "./types";
 
 class Parser {
-  parseContractInfo(name: string, devDoc: any, userDoc: any, abi: any, evmInfo: any): ContractInfo {
-    const contractInfo: ContractInfo = this.parseBaseDescription(name, devDoc, userDoc);
+  parseContractInfo(contractBuildData: ContractBuildData): ContractInfo {
+    const contractInfo: ContractInfo = {
+      license: this.parseLicenseFromMetadata(contractBuildData.contractSource, contractBuildData.metadata),
+      ...this.parseBaseDescription(contractBuildData.contractName, contractBuildData.devdoc, contractBuildData.userdoc),
+    };
 
-    if (devDoc && devDoc.author) {
-      contractInfo.author = devDoc.author;
+    if (contractBuildData.devdoc && contractBuildData.devdoc.author) {
+      contractInfo.author = contractBuildData.devdoc.author;
     }
 
-    if (devDoc && devDoc.title) {
-      contractInfo.title = devDoc.title;
+    if (contractBuildData.devdoc && contractBuildData.devdoc.title) {
+      contractInfo.title = contractBuildData.devdoc.title;
     }
 
-    const events: EventsInfo = this.parseEventsInfo(devDoc, userDoc, abi);
+    const events: EventsInfo = this.parseEventsInfo(
+      contractBuildData.devdoc,
+      contractBuildData.userdoc,
+      contractBuildData.abi
+    );
 
     if (events) {
       contractInfo.events = events;
     }
 
-    const functions: FunctionsInfo = this.parseFunctionsInfo(devDoc, userDoc, abi, evmInfo);
+    const functions: FunctionsInfo = this.parseFunctionsInfo(
+      contractBuildData.devdoc,
+      contractBuildData.userdoc,
+      contractBuildData.abi,
+      contractBuildData.evm
+    );
 
     if (functions) {
       contractInfo.functions = functions;
     }
 
-    const errors: ErrorsInfo = this.parseErrorsInfo(devDoc, userDoc, abi);
+    const errors: ErrorsInfo = this.parseErrorsInfo(
+      contractBuildData.devdoc,
+      contractBuildData.userdoc,
+      contractBuildData.abi
+    );
 
     if (errors) {
       contractInfo.errors = errors;
@@ -256,6 +273,23 @@ class Parser {
     }
 
     return fullMethodSign;
+  }
+
+  parseLicenseFromMetadata(contractSource: string, metadata: any): string {
+    let license: string = DEFAULT_LICENSE;
+
+    if (metadata) {
+      const metadataObj = JSON.parse(metadata.replace("/\\/g"));
+      const metadataSource = metadataObj.sources[contractSource];
+
+      if (metadataSource) {
+        license = metadataSource.license ? metadataSource.license : DEFAULT_LICENSE;
+      } else {
+        throw new Error(`Failed to get metadata source for ${contractSource}`);
+      }
+    }
+
+    return license;
   }
 
   private getSignRecursive(funcAbi: any): string {
