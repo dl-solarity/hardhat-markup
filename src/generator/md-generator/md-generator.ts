@@ -20,9 +20,8 @@ class MDGenerator {
 
     mdConstructor.addHeaderTag(contractInfo.name, CONTRACT_NAME_H_SIZE);
 
-    if (contractInfo.notice || contractInfo.details || contractInfo.author) {
-      mdConstructor.addHeaderTag("Contract Description");
-    }
+    mdConstructor.addHeaderTag("Contract Description");
+    mdConstructor.addParagraphTag(`License: ${contractInfo.license}`);
 
     if (contractInfo.author) {
       mdConstructor.addParagraphTag(`Authored by ${contractInfo.author}`);

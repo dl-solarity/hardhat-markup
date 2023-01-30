@@ -78,4 +78,4 @@ module.exports = {
 ## Known limitations
 
 - The generator does not recognize structs in the function signature. `tuple` is used instead.
-- `@inheritdoc` is currently not supported.
+- `Vyper` is currently not supported.

@@ -1,4 +1,15 @@
+export interface ContractBuildData {
+  contractSource: string;
+  contractName: string;
+  abi: any;
+  devdoc: any;
+  userdoc: any;
+  evm: any;
+  metadata: any;
+}
+
 export interface ContractInfo extends BaseDescription {
+  license: string;
   title?: string;
   author?: string;
   functions?: FunctionsInfo;

@@ -58,8 +58,16 @@ module.exports = class Generator {
         continue;
       }
 
-      const { abi, devdoc, userdoc, evm } = buildInfo as any;
-      const contractInfo: ContractInfo = this.parser.parseContractInfo(name, devdoc, userdoc, abi, evm);
+      const { abi, devdoc, userdoc, evm, metadata } = buildInfo as any;
+      const contractInfo: ContractInfo = this.parser.parseContractInfo({
+        contractName: name,
+        contractSource: source,
+        abi,
+        devdoc,
+        userdoc,
+        evm,
+        metadata,
+      });
 
       const genDir = `${this.outDir}/${path.dirname(source)}`;
       const genPath = `${genDir}/${name}.md`;
