@@ -10,6 +10,8 @@ import {
   BaseElement,
   BaseMethodInfo,
   FullMethodSign,
+  StateVariablesInfo,
+  StateVariableInfo,
 } from "../../parser/types";
 import { CONTRACT_NAME_H_SIZE, FULL_METHOD_SIGN_MAX_LENGTH, FUNCTION_NAME_H_SIZE } from "./constants";
 import { MDConstructor } from "./md-constructor";
@@ -57,6 +59,20 @@ class MDGenerator {
       }
     }
 
+    const stateVariables: StateVariablesInfo | undefined = contractInfo.stateVariables;
+
+    if (stateVariables) {
+      const keys: string[] = Object.keys(stateVariables);
+
+      if (keys.length > 0) {
+        mdConstructor.addHeaderTag("State variables info");
+
+        keys.forEach((funcSign: string) => {
+          this.generateFunctionBlock(mdConstructor, stateVariables[funcSign]);
+        });
+      }
+    }
+
     const functions: FunctionsInfo | undefined = contractInfo.functions;
 
     if (functions) {
@@ -74,7 +90,7 @@ class MDGenerator {
     return mdConstructor.getContractTagsStr();
   }
 
-  generateFunctionBlock(mdConstructor: MDConstructor, funcInfo: FunctionInfo) {
+  generateFunctionBlock(mdConstructor: MDConstructor, funcInfo: FunctionInfo | StateVariableInfo) {
     const funcHeader = `${funcInfo.name} (0x${funcInfo.selector})`;
 
     this.generateBaseMethodBlock(mdConstructor, funcHeader, funcInfo);
