@@ -13,8 +13,13 @@ export interface ContractInfo extends BaseDescription {
   title?: string;
   author?: string;
   functions?: FunctionsInfo;
+  stateVariables?: StateVariablesInfo;
   events?: EventsInfo;
   errors?: ErrorsInfo;
+}
+
+export interface StateVariablesInfo {
+  [varSign: string]: StateVariableInfo;
 }
 
 export interface FunctionsInfo {
@@ -28,6 +33,8 @@ export interface ErrorsInfo {
 export interface EventsInfo {
   [eventSig: string]: EventInfo;
 }
+
+export interface StateVariableInfo extends FunctionInfo {}
 
 export interface FunctionInfo extends BaseMethodInfo {
   selector: string;

@@ -12,6 +12,8 @@ import {
   ContractInfo,
   FullMethodSign,
   ContractBuildData,
+  StateVariablesInfo,
+  StateVariableInfo,
 } from "./types";
 
 class Parser {
@@ -50,6 +52,18 @@ class Parser {
       contractInfo.functions = functions;
     }
 
+    const stateVariables: StateVariablesInfo = this.parseFunctionsInfo(
+      contractBuildData.devdoc,
+      contractBuildData.userdoc,
+      contractBuildData.abi,
+      contractBuildData.evm,
+      true
+    );
+
+    if (stateVariables) {
+      contractInfo.stateVariables = stateVariables;
+    }
+
     const errors: ErrorsInfo = this.parseErrorsInfo(
       contractBuildData.devdoc,
       contractBuildData.userdoc,
@@ -63,13 +77,26 @@ class Parser {
     return contractInfo;
   }
 
-  parseFunctionsInfo(devDoc: any, userDoc: any, abi: any, evmInfo: any): FunctionsInfo {
-    const functionsInfo: FunctionsInfo = {};
+  parseFunctionsInfo(
+    devDoc: any,
+    userDoc: any,
+    abi: any,
+    evmInfo: any,
+    isStateVars: boolean = false
+  ): FunctionsInfo | StateVariablesInfo {
+    const functionsInfo: FunctionsInfo | StateVariablesInfo = {};
 
-    this.getAbisByType(abi, FUNCTION_TYPE).forEach((currentAbi: any) => {
+    this.getAbisByType(abi, devDoc, FUNCTION_TYPE, isStateVars).forEach((currentAbi: any) => {
       const currentSign = this.parseMethodSignature(currentAbi);
 
-      const devDocFunctionInfo = devDoc.methods ? devDoc.methods[currentSign] : undefined;
+      let devDocFunctionInfo: any = {};
+
+      if (isStateVars) {
+        devDocFunctionInfo = devDoc.stateVariables ? devDoc.stateVariables[currentAbi.name] : undefined;
+      } else {
+        devDocFunctionInfo = devDoc.methods ? devDoc.methods[currentSign] : undefined;
+      }
+
       const userDocFunctionInfo = userDoc.methods ? userDoc.methods[currentSign] : undefined;
 
       const funcSelector = evmInfo.methodIdentifiers[currentSign];
@@ -93,7 +120,7 @@ class Parser {
   parseEventsInfo(devDoc: any, userDoc: any, abi: any): EventsInfo {
     const eventsInfo: EventsInfo = {};
 
-    this.getAbisByType(abi, EVENT_TYPE).forEach((currentAbi: any) => {
+    this.getAbisByType(abi, devDoc, EVENT_TYPE).forEach((currentAbi: any) => {
       const currentSign = this.parseMethodSignature(currentAbi);
 
       const devDocEventInfo = devDoc.events ? devDoc.events[currentSign] : undefined;
@@ -110,7 +137,7 @@ class Parser {
   parseErrorsInfo(devDoc: any, userDoc: any, abi: any): ErrorsInfo {
     const errorsInfo: ErrorsInfo = {};
 
-    this.getAbisByType(abi, ERROR_TYPE).forEach((currentAbi: any) => {
+    this.getAbisByType(abi, devDoc, ERROR_TYPE).forEach((currentAbi: any) => {
       const currentSign = this.parseMethodSignature(currentAbi);
 
       const devDocErrorInfo = devDoc.errors ? devDoc.errors[currentSign][0] : undefined;
@@ -122,7 +149,13 @@ class Parser {
     return errorsInfo;
   }
 
-  parseFunctionInfo(functionName: string, selector: string, devDoc: any, userDoc: any, functionAbi: any): FunctionInfo {
+  parseFunctionInfo(
+    functionName: string,
+    selector: string,
+    devDoc: any,
+    userDoc: any,
+    functionAbi: any
+  ): FunctionInfo | StateVariableInfo {
     const functionInfo: FunctionInfo = {
       selector,
       ...this.parseBaseMethodInfo(functionName, devDoc, userDoc, functionAbi),
@@ -180,15 +213,18 @@ class Parser {
       const paramsArr: Param[] = [];
 
       if (methodAbi.inputs) {
-        methodAbi.inputs.forEach((param: any) => {
-          const paramDesc = devDoc.params[param.name];
+        const devDocParamKeys = Object.keys(devDoc.params);
+
+        methodAbi.inputs.forEach((param: any, index: number) => {
+          const paramName = param.name ? param.name : devDocParamKeys[index];
+          const paramDesc = devDoc.params[paramName];
 
           if (!paramDesc) {
             return;
           }
 
           const paramToAdd: Param = {
-            name: param.name,
+            name: paramName,
             type: param.type,
             description: paramDesc,
           };
@@ -247,7 +283,9 @@ class Parser {
         isIndexed = inputElem.indexed ? " indexed" : "";
       }
 
-      return `${inputElem.type}${isIndexed} ${inputElem.name}`;
+      const inputElementName = inputElem.name ? ` ${inputElem.name}` : "";
+
+      return `${inputElem.type}${isIndexed}${inputElementName}`;
     });
 
     if (params.length > 0) {
@@ -292,6 +330,10 @@ class Parser {
     return license;
   }
 
+  private isStateVar(devDoc: any, funcAbi: any): boolean {
+    return devDoc && devDoc.stateVariables && devDoc.stateVariables[funcAbi.name];
+  }
+
   private getSignRecursive(funcAbi: any): string {
     if (funcAbi.components) {
       const tupleArrSufix = funcAbi.type == "tuple[]" ? "[]" : "";
@@ -302,11 +344,11 @@ class Parser {
     return funcAbi.type;
   }
 
-  private getAbisByType(abi: any, methotType: string): any[] {
+  private getAbisByType(abi: any, devDoc: any, methotType: string, isStateVar: boolean = false): any[] {
     const abis: any[] = [];
 
     abi.map((currentAbi: any) => {
-      if (currentAbi.type == methotType) {
+      if (currentAbi.type == methotType && this.isStateVar(devDoc, currentAbi) == isStateVar) {
         abis.push(currentAbi);
       }
     });
