@@ -331,7 +331,7 @@ class Parser {
   }
 
   private isStateVar(devDoc: any, funcAbi: any): boolean {
-    return devDoc && devDoc.stateVariables && devDoc.stateVariables[funcAbi.name];
+    return !!(devDoc && devDoc.stateVariables && devDoc.stateVariables[funcAbi.name]);
   }
 
   private getSignRecursive(funcAbi: any): string {
