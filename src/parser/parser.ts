@@ -1,374 +1,220 @@
-import { DEFAULT_LICENSE, ERROR_TYPE, EVENT_TYPE, FUNCTION_TYPE } from "./constants";
+import { BuildInfo } from "hardhat/types";
 import {
-  Return,
-  Param,
-  BaseDescription,
-  BaseMethodInfo,
-  EventInfo,
-  FunctionInfo,
-  ErrorsInfo,
-  EventsInfo,
-  FunctionsInfo,
-  ContractInfo,
-  FullMethodSign,
-  ContractBuildData,
-  StateVariablesInfo,
-  StateVariableInfo,
-} from "./types";
+  ContractDefinition,
+  Expression,
+  FunctionDefinition,
+  Identifier,
+  ModifierInvocation,
+  SourceUnit,
+  VariableDeclaration,
+} from "solidity-ast";
+import { ASTDereferencer, astDereferencer, findAll, SrcDecoder, srcDecoder } from "solidity-ast/utils";
+import { DEFAULT_LICENSE } from "./constants";
+import { ContractInfo, Documentation, DocumentationLine, FunctionDefinitionWithParsedData } from "./types";
 
 class Parser {
-  parseContractInfo(contractBuildData: ContractBuildData): ContractInfo {
+  private contractBuildInfo: BuildInfo;
+  private deref: ASTDereferencer;
+  private decodeSrc: SrcDecoder;
+
+  constructor(contractBuildInfo: BuildInfo) {
+    this.contractBuildInfo = contractBuildInfo;
+
+    this.deref = astDereferencer(contractBuildInfo.output);
+    this.decodeSrc = srcDecoder(contractBuildInfo.input, contractBuildInfo.output);
+  }
+
+  writeToFile(fileName: string, data: any) {
+    var fs = require("fs");
+    fs.writeFile("parser2/" + fileName + ".json", JSON.stringify(data), "utf8", function () {});
+  }
+
+  parseContractInfo(source: string, name: string): ContractInfo {
+    const desiredSource = this.contractBuildInfo.output.sources[source];
+
+    const sourceUnit = desiredSource.ast as SourceUnit;
+    // base
+    const license = this.parseLicense(sourceUnit);
+    const contractNode = sourceUnit.nodes.find(
+      (node) => node.nodeType === "ContractDefinition" && node.name === name
+    ) as ContractDefinition;
+
+    const events = [...findAll("EventDefinition", contractNode)];
+    const functions = this.parseFunctions(contractNode);
+    const stateVariables = [...findAll("VariableDeclaration", contractNode)]; // TODO: do we need to parse this?
+    const errors = [...findAll("ErrorDefinition", contractNode)];
+
+    const documentation = new Map<Number, Documentation>();
+
+    // added
+    // const enums = this.parseEnums(contractNode);
+    const enums = [...findAll("EnumDefinition", contractNode)];
+    const structs = [...findAll("StructDefinition", contractNode)];
+    const modifiers = [...findAll("ModifierDefinition", contractNode)];
+    const usingForDirectives = [...findAll("UsingForDirective", contractNode)];
+    const baseContracts = contractNode.baseContracts;
+    const isAbstract = contractNode.abstract;
+    const contractKind = contractNode.contractKind;
+
     const contractInfo: ContractInfo = {
-      license: this.parseLicenseFromMetadata(contractBuildData.contractSource, contractBuildData.metadata),
-      ...this.parseBaseDescription(contractBuildData.contractName, contractBuildData.devdoc, contractBuildData.userdoc),
+      name: contractNode.name,
+      license: license,
+      baseDescription: this.parseDocumentation(contractNode),
+      functions: functions,
+      stateVariables: stateVariables,
+      events: events,
+      errors: errors,
+      enums: enums,
+      structs: structs,
+      modifiers: modifiers,
+      usingForDirectives: usingForDirectives,
+      baseContracts: baseContracts,
+      isAbstract: isAbstract,
+      contractKind: contractKind,
+      documentations: documentation,
     };
+    this.addDocumentationToEachNode(contractInfo);
 
-    if (contractBuildData.devdoc && contractBuildData.devdoc.author) {
-      contractInfo.author = contractBuildData.devdoc.author;
-    }
-
-    if (contractBuildData.devdoc && contractBuildData.devdoc.title) {
-      contractInfo.title = contractBuildData.devdoc.title;
-    }
-
-    const events: EventsInfo = this.parseEventsInfo(
-      contractBuildData.devdoc,
-      contractBuildData.userdoc,
-      contractBuildData.abi
-    );
-
-    if (events) {
-      contractInfo.events = events;
-    }
-
-    const functions: FunctionsInfo = this.parseFunctionsInfo(
-      contractBuildData.devdoc,
-      contractBuildData.userdoc,
-      contractBuildData.abi,
-      contractBuildData.evm
-    );
-
-    if (functions) {
-      contractInfo.functions = functions;
-    }
-
-    const stateVariables: StateVariablesInfo = this.parseFunctionsInfo(
-      contractBuildData.devdoc,
-      contractBuildData.userdoc,
-      contractBuildData.abi,
-      contractBuildData.evm,
-      true
-    );
-
-    if (stateVariables) {
-      contractInfo.stateVariables = stateVariables;
-    }
-
-    const errors: ErrorsInfo = this.parseErrorsInfo(
-      contractBuildData.devdoc,
-      contractBuildData.userdoc,
-      contractBuildData.abi
-    );
-
-    if (errors) {
-      contractInfo.errors = errors;
-    }
-
+    this.writeToFile("contractBuildInfo", this.contractBuildInfo);
+    this.writeToFile("documentations", [...documentation.entries()]);
     return contractInfo;
   }
 
-  parseFunctionsInfo(
-    devDoc: any,
-    userDoc: any,
-    abi: any,
-    evmInfo: any,
-    isStateVars: boolean = false
-  ): FunctionsInfo | StateVariablesInfo {
-    const functionsInfo: FunctionsInfo | StateVariablesInfo = {};
+  parseFunctions(contractDefinition: ContractDefinition): FunctionDefinitionWithParsedData[] {
+    const functionGenerator = findAll("FunctionDefinition", contractDefinition);
 
-    this.getAbisByType(abi, devDoc, FUNCTION_TYPE, isStateVars).forEach((currentAbi: any) => {
-      const currentSign = this.parseMethodSignature(currentAbi);
+    const functions: FunctionDefinitionWithParsedData[] = [];
+    for (const functionDefinition of functionGenerator) {
+      const functionDefinitionWithParsedData: FunctionDefinitionWithParsedData = {
+        ...functionDefinition,
+        fullMethodSign: this.parseFullMethodSign(functionDefinition),
+        functionSelector: this.parseSelector(functionDefinition),
+      };
 
-      let devDocFunctionInfo: any = {};
+      functions.push(functionDefinitionWithParsedData);
+    }
 
-      if (isStateVars) {
-        devDocFunctionInfo = devDoc.stateVariables ? devDoc.stateVariables[currentAbi.name] : undefined;
-      } else {
-        devDocFunctionInfo = devDoc.methods ? devDoc.methods[currentSign] : undefined;
+    return functions;
+  }
+
+  parseSelector(functionDefinition: FunctionDefinition): string | undefined {
+    if (functionDefinition.functionSelector) {
+      return functionDefinition.functionSelector;
+    }
+    if (
+      functionDefinition.kind === "constructor" ||
+      functionDefinition.kind === "fallback" ||
+      functionDefinition.kind === "receive"
+    ) {
+      return;
+    }
+    if (!functionDefinition.baseFunctions) {
+      return;
+    }
+
+    for (const baseFunction of this.parseBaseFunctions(functionDefinition.baseFunctions)) {
+      if (baseFunction.functionSelector) {
+        return baseFunction.functionSelector;
       }
-
-      const userDocFunctionInfo = userDoc.methods ? userDoc.methods[currentSign] : undefined;
-
-      const funcSelector = evmInfo.methodIdentifiers[currentSign];
-
-      if (!funcSelector) {
-        throw new Error(`Failed to parse selector for ${currentSign} function`);
-      }
-
-      functionsInfo[currentSign] = this.parseFunctionInfo(
-        currentAbi.name,
-        funcSelector,
-        devDocFunctionInfo,
-        userDocFunctionInfo,
-        currentAbi
-      );
-    });
-
-    return functionsInfo;
-  }
-
-  parseEventsInfo(devDoc: any, userDoc: any, abi: any): EventsInfo {
-    const eventsInfo: EventsInfo = {};
-
-    this.getAbisByType(abi, devDoc, EVENT_TYPE).forEach((currentAbi: any) => {
-      const currentSign = this.parseMethodSignature(currentAbi);
-
-      const devDocEventInfo = devDoc.events ? devDoc.events[currentSign] : undefined;
-      const userDocEventInfo = userDoc.events ? userDoc.events[currentSign] : undefined;
-
-      const eventInfo: EventInfo = this.parseEventInfo(currentAbi.name, devDocEventInfo, userDocEventInfo, currentAbi);
-
-      eventsInfo[currentSign] = eventInfo;
-    });
-
-    return eventsInfo;
-  }
-
-  parseErrorsInfo(devDoc: any, userDoc: any, abi: any): ErrorsInfo {
-    const errorsInfo: ErrorsInfo = {};
-
-    this.getAbisByType(abi, devDoc, ERROR_TYPE).forEach((currentAbi: any) => {
-      const currentSign = this.parseMethodSignature(currentAbi);
-
-      const devDocErrorInfo = devDoc.errors ? devDoc.errors[currentSign][0] : undefined;
-      const userDocErrorInfo = userDoc.errors ? userDoc.errors[currentSign][0] : undefined;
-
-      errorsInfo[currentSign] = this.parseErrorInfo(currentAbi.name, devDocErrorInfo, userDocErrorInfo, currentAbi);
-    });
-
-    return errorsInfo;
-  }
-
-  parseFunctionInfo(
-    functionName: string,
-    selector: string,
-    devDoc: any,
-    userDoc: any,
-    functionAbi: any
-  ): FunctionInfo | StateVariableInfo {
-    const functionInfo: FunctionInfo = {
-      selector,
-      ...this.parseBaseMethodInfo(functionName, devDoc, userDoc, functionAbi),
-    };
-
-    const returns = this.parseReturns(devDoc, functionAbi);
-
-    if (returns) {
-      functionInfo.returns = returns;
     }
-
-    return functionInfo;
   }
 
-  parseEventInfo(eventName: string, devDoc: any, userDoc: any, eventAbi: any): EventInfo {
-    return this.parseBaseMethodInfo(eventName, devDoc, userDoc, eventAbi);
+  parseBaseFunctions(ids: number[]): FunctionDefinition[] {
+    return ids.map((id) => this.deref("FunctionDefinition", id));
   }
 
-  parseErrorInfo(errorName: string, devDoc: any, userDoc: any, errorAbi: any): EventInfo {
-    return this.parseBaseMethodInfo(errorName, devDoc, userDoc, errorAbi);
-  }
+  parseFullMethodSign(functionDefinition: FunctionDefinition): string {
+    const kind = functionDefinition.kind;
+    const functionName = functionDefinition.name.length === 0 ? "" : ` ${functionDefinition.name}`;
+    const parameters = functionDefinition.parameters.parameters
+      .map(
+        (variableDeclaration: VariableDeclaration) =>
+          variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name
+      )
+      .join(", ");
+    const visibility = kind === "constructor" ? "" : ` ${functionDefinition.visibility}`;
+    const stateMutability =
+      functionDefinition.stateMutability === "nonpayable" ? "" : ` ${functionDefinition.stateMutability}`;
+    const modifiers =
+      functionDefinition.modifiers.length === 0
+        ? ""
+        : " " +
+          functionDefinition.modifiers
+            .map(
+              (modifier: ModifierInvocation) =>
+                modifier.modifierName.name +
+                (modifier.arguments
+                  ? `(${modifier.arguments
+                      .map((expression: Expression) => (expression as Identifier).name)
+                      .join(", ")})`
+                  : "")
+            )
+            .join(" ");
 
-  parseBaseMethodInfo(methodName: string, devDoc: any, userDoc: any, methodAbi: any): BaseMethodInfo {
-    const baseMethodInfo: BaseMethodInfo = {
-      methodAbi,
-      fullMethodSign: this.parseFullMethodSign(methodAbi),
-      ...this.parseBaseDescription(methodName, devDoc, userDoc),
-    };
-
-    const params = this.parseParams(devDoc, methodAbi);
-
-    if (params) {
-      baseMethodInfo.params = params;
-    }
-
-    return baseMethodInfo;
-  }
-
-  parseBaseDescription(name: string, devDoc: any, userDoc: any): BaseDescription {
-    const baseDesc: BaseDescription = { name };
-
-    if (userDoc && userDoc.notice) {
-      baseDesc.notice = userDoc.notice;
-    }
-
-    if (devDoc && devDoc.details) {
-      baseDesc.details = devDoc.details;
-    }
-
-    return baseDesc;
-  }
-
-  parseParams(devDoc: any, methodAbi: any): Param[] | undefined {
-    if (devDoc && devDoc.params) {
-      const paramsArr: Param[] = [];
-
-      if (methodAbi.inputs) {
-        const devDocParamKeys = Object.keys(devDoc.params);
-
-        methodAbi.inputs.forEach((param: any, index: number) => {
-          const paramName = param.name ? param.name : devDocParamKeys[index];
-          const paramDesc = devDoc.params[paramName];
-
-          if (!paramDesc) {
-            return;
-          }
-
-          const paramToAdd: Param = {
-            name: paramName,
-            type: param.type,
-            description: paramDesc,
-          };
-
-          if (methodAbi.type == EVENT_TYPE) {
-            paramToAdd.isIndexed = param.indexed;
-          }
-
-          paramsArr.push(paramToAdd);
-        });
-      }
-
-      return paramsArr;
-    }
-
-    return undefined;
-  }
-
-  parseReturns(devDoc: any, methodAbi: any): Return[] | undefined {
-    if (devDoc && devDoc.returns) {
-      const returnsArr: Return[] = [];
-
-      if (methodAbi.outputs) {
-        methodAbi.outputs.forEach((output: any, outIndex: number) => {
-          const outName = output.name ? output.name : `_${outIndex}`;
-
-          if (!devDoc.returns[outName]) {
-            return;
-          }
-
-          returnsArr.push({
-            name: outName,
-            type: output.type,
-            description: devDoc.returns[outName],
-          });
-        });
-      }
-
-      return returnsArr;
-    }
-
-    return undefined;
-  }
-
-  parseMethodSignature(methodAbi: any): string {
-    return `${methodAbi.name}(${methodAbi.inputs.map((inputElem: any) => this.getSignRecursive(inputElem))})`;
-  }
-
-  parseFullMethodSign(methodAbi: any): FullMethodSign {
-    const fullMethodSign: FullMethodSign = { methodType: methodAbi.type, methodName: methodAbi.name };
-
-    const params: string[] = methodAbi.inputs.map((inputElem: any) => {
-      let isIndexed: string = "";
-
-      if (fullMethodSign.methodType == EVENT_TYPE) {
-        isIndexed = inputElem.indexed ? " indexed" : "";
-      }
-
-      const inputElementName = inputElem.name ? ` ${inputElem.name}` : "";
-
-      return `${inputElem.type}${isIndexed}${inputElementName}`;
-    });
-
-    if (params.length > 0) {
-      fullMethodSign.parameters = params;
-    }
-
-    if (fullMethodSign.methodType == FUNCTION_TYPE) {
-      const modifiers: string[] = this.getFunctionModifiers(methodAbi.stateMutability).split(" ");
-
-      const returns: string[] = methodAbi.outputs.map((outputElem: any) => {
-        const outputName = outputElem.name ? ` ${outputElem.name}` : "";
-
-        return `${outputElem.type}${outputName}`;
-      });
-
-      if (returns.length > 0) {
-        modifiers.push("returns");
-
-        fullMethodSign.returns = returns;
-      }
-
-      fullMethodSign.modifiers = modifiers;
-    }
+    const virtual = functionDefinition.virtual ? " virtual" : "";
+    const overrides = functionDefinition.overrides ? " override" : "";
+    const returns =
+      functionDefinition.returnParameters.parameters.length === 0
+        ? ""
+        : " returns (" +
+          functionDefinition.returnParameters.parameters
+            .map((variableDeclaration: VariableDeclaration) =>
+              (variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name).trim()
+            )
+            .join(", ") +
+          ")";
+    const fullMethodSign: string = `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns}`;
 
     return fullMethodSign;
   }
 
-  parseLicenseFromMetadata(contractSource: string, metadata: any): string {
-    let license: string = DEFAULT_LICENSE;
+  addDocumentationToEachNode(contractInfo: ContractInfo) {
+    const nodes = [
+      ...contractInfo.functions,
+      ...contractInfo.stateVariables,
+      ...contractInfo.events,
+      ...contractInfo.errors,
+      ...contractInfo.enums,
+      ...contractInfo.structs,
+    ];
 
-    if (metadata) {
-      const metadataObj = JSON.parse(metadata.replace("/\\/g"));
-      const metadataSource = metadataObj.sources[contractSource];
-
-      if (metadataSource) {
-        license = metadataSource.license ? metadataSource.license : DEFAULT_LICENSE;
-      } else {
-        throw new Error(`Failed to get metadata source for ${contractSource}`);
-      }
+    for (const node of nodes) {
+      const documentation: Documentation = {
+        documentationLines: this.parseDocumentation(node),
+      };
+      contractInfo.documentations.set(node.id, documentation);
     }
-
-    return license;
   }
 
-  private isStateVar(devDoc: any, funcAbi: any): boolean {
-    return !!(devDoc && devDoc.stateVariables && devDoc.stateVariables[funcAbi.name]);
+  parseLicense(node: SourceUnit): string {
+    return node.license || DEFAULT_LICENSE;
   }
 
-  private getSignRecursive(funcAbi: any): string {
-    if (funcAbi.components) {
-      const tupleArrSufix = funcAbi.type == "tuple[]" ? "[]" : "";
+  deleteComments(text: string): string {
+    const reCommentSymbols = /\/\*[\s\S]*?\*\/|\/\/.*$/gm;
+    const reSpaceAtBeginningOfLine = /^[ \t]*[ \t]?/gm;
+    return text.replace(reCommentSymbols, "").replace(reSpaceAtBeginningOfLine, "").trim();
+  }
 
-      return `(${funcAbi.components.map((el: any) => this.getSignRecursive(el))})${tupleArrSufix}`;
+  parseDocumentation(node: any): DocumentationLine[] {
+    if (node.documentation == null) {
+      return [];
     }
+    const text = this.deleteComments(node.documentation.text);
 
-    return funcAbi.type;
-  }
+    const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
-  private getAbisByType(abi: any, devDoc: any, methotType: string, isStateVar: boolean = false): any[] {
-    const abis: any[] = [];
+    const matches = [...text.matchAll(natSpecRegex)];
 
-    abi.map((currentAbi: any) => {
-      if (currentAbi.type == methotType && this.isStateVar(devDoc, currentAbi) == isStateVar) {
-        abis.push(currentAbi);
-      }
+    const documentationLines: DocumentationLine[] = matches.map((match) => {
+      const [, tag, text] = match;
+      return {
+        tag: tag || "notice",
+        description: text,
+      };
     });
 
-    return abis;
-  }
-
-  private getFunctionModifiers(stateMutability: string): string {
-    switch (stateMutability) {
-      case "payable":
-        return "external payable";
-      case "nonpayable":
-        return "external";
-      case "view":
-        return "external view";
-      case "pure":
-        return "external pure";
-      default:
-        throw new Error(`Failed to get function modifiers from ${stateMutability}`);
-    }
+    return documentationLines;
   }
 }
 

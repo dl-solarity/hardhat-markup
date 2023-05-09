@@ -13,13 +13,11 @@ module.exports = class Generator {
   private onlyFiles: string[];
   private skipFiles: string[];
   private verbose: boolean;
-  private parser: Parser;
   private mdGenerator: MDGenerator;
 
   constructor(hre: HardhatRuntimeEnvironment) {
     this.artifacts = hre.artifacts;
     this.outDir = path.resolve(hre.config.markup.outdir);
-    this.parser = new Parser();
     this.mdGenerator = new MDGenerator();
     this.onlyFiles = hre.config.markup.onlyFiles.map((p) => path.normalize(p));
     this.skipFiles = hre.config.markup.skipFiles.map((p) => path.normalize(p));
@@ -52,22 +50,13 @@ module.exports = class Generator {
 
       this.verboseLog(`\nStarted generating markup for ${name} contract`);
 
-      const buildInfo = (await this.artifacts.getBuildInfo(contractName))?.output.contracts[source][name];
+      const buildInfo = await this.artifacts.getBuildInfo(contractName);
 
       if (buildInfo === undefined) {
         continue;
       }
 
-      const { abi, devdoc, userdoc, evm, metadata } = buildInfo as any;
-      const contractInfo: ContractInfo = this.parser.parseContractInfo({
-        contractName: name,
-        contractSource: source,
-        abi,
-        devdoc,
-        userdoc,
-        evm,
-        metadata,
-      });
+      const contractInfo: ContractInfo = new Parser(buildInfo).parseContractInfo(source, name);
 
       const genDir = `${this.outDir}/${path.dirname(source)}`;
       const genPath = `${genDir}/${name}.md`;
