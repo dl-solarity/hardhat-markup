@@ -14,26 +14,38 @@ export interface ContractInfo {
   name: string;
   license: string;
   baseDescription: DocumentationLine[];
-  functions: FunctionDefinitionWithParsedData[];
-  stateVariables: VariableDeclaration[];
-  events: EventDefinition[];
-  errors: ErrorDefinition[];
-  enums: EnumDefinition[];
-  structs: StructDefinition[];
-  modifiers: ModifierDefinition[];
-  usingForDirectives: UsingForDirective[];
+  functions: FunctionDefinitionWithDocumentation[];
+  stateVariables: VariableDeclarationWithDocumentation[];
+  events: EventDefinitionWithDocumentation[];
+  errors: ErrorDefinitionWithDocumentation[];
+  enums: EnumDefinitionWithDocumentation[];
+  structs: StructDefinitionWithDocumentation[];
+  modifiers: ModifierDefinitionWithDocumentation[];
+  usingForDirectives: UsingForDirectiveWithDocumentation[];
   baseContracts: InheritanceSpecifier[];
   isAbstract: boolean;
   contractKind: "contract" | "interface" | "library";
-  documentations: Map<Number, Documentation>;
 }
 
-export interface FunctionDefinitionWithParsedData extends FunctionDefinition {
-  fullMethodSign: string;
-}
+export interface FunctionDefinitionWithDocumentation extends FunctionDefinition, Documentation {}
+
+export interface VariableDeclarationWithDocumentation extends VariableDeclaration, Documentation {}
+
+export interface EventDefinitionWithDocumentation extends EventDefinition, Documentation {}
+
+export interface ErrorDefinitionWithDocumentation extends ErrorDefinition, Documentation {}
+
+export interface EnumDefinitionWithDocumentation extends EnumDefinition, Documentation {}
+
+export interface StructDefinitionWithDocumentation extends StructDefinition, Documentation {}
+
+export interface ModifierDefinitionWithDocumentation extends ModifierDefinition, Documentation {}
+
+export interface UsingForDirectiveWithDocumentation extends UsingForDirective, Documentation {}
 
 export interface Documentation {
   documentationLines: DocumentationLine[];
+  fullSign: string;
 }
 
 export interface DocumentationLine {
