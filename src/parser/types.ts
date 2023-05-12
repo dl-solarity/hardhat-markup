@@ -13,7 +13,7 @@ import {
 export interface ContractInfo {
   name: string;
   license: string;
-  baseDescription: DocumentationLine[];
+  baseDescription: NatSpecDocumentation;
   functions: FunctionDefinitionWithDocumentation[];
   stateVariables: VariableDeclarationWithDocumentation[];
   events: EventDefinitionWithDocumentation[];
@@ -44,11 +44,26 @@ export interface ModifierDefinitionWithDocumentation extends ModifierDefinition,
 export interface UsingForDirectiveWithDocumentation extends UsingForDirective, Documentation {}
 
 export interface Documentation {
-  documentationLines: DocumentationLine[];
   fullSign: string;
+  natSpecDocumentation?: NatSpecDocumentation;
 }
 
-export interface DocumentationLine {
-  tag: string;
-  description: string;
+export interface NatSpecDocumentation {
+  title?: string;
+  author?: string;
+  notice?: string;
+  dev?: string;
+  params?: {
+    name?: string;
+    type: string;
+    description: string;
+  }[];
+  returns?: {
+    name?: string;
+    type: string;
+    description: string;
+  }[];
+  custom?: {
+    [tag: string]: string;
+  };
 }

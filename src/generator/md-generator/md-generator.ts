@@ -2,12 +2,12 @@ import { VariableDeclaration } from "solidity-ast";
 import {
   ContractInfo,
   Documentation,
-  DocumentationLine,
   EnumDefinitionWithDocumentation,
   ErrorDefinitionWithDocumentation,
   EventDefinitionWithDocumentation,
   FunctionDefinitionWithDocumentation,
   ModifierDefinitionWithDocumentation,
+  NatSpecDocumentation,
   StructDefinitionWithDocumentation,
   UsingForDirectiveWithDocumentation,
   VariableDeclarationWithDocumentation,
@@ -34,36 +34,15 @@ class MDGenerator {
 
     this.generateDocumentationBlock(mdConstructor, contractInfo.baseDescription);
 
-    const events: EventDefinitionWithDocumentation[] = contractInfo.events;
+    const usingForDirectives: UsingForDirectiveWithDocumentation[] = contractInfo.usingForDirectives;
 
-    if (events.length > 0) {
-      mdConstructor.addHeaderTag("Events info");
+    if (usingForDirectives.length > 0) {
+      mdConstructor.addHeaderTag("Using for directives info");
 
-      for (const event of events) {
-        this.generateEventBlock(mdConstructor, event);
-        this.generateDocumentationBlock(mdConstructor, event.documentationLines);
-      }
-    }
-
-    const errors: ErrorDefinitionWithDocumentation[] = contractInfo.errors;
-
-    if (errors.length > 0) {
-      mdConstructor.addHeaderTag("Errors info");
-
-      for (const error of errors) {
-        this.generateErrorBlock(mdConstructor, error);
-        this.generateDocumentationBlock(mdConstructor, error.documentationLines);
-      }
-    }
-
-    const functions: FunctionDefinitionWithDocumentation[] = contractInfo.functions;
-
-    if (functions.length > 0) {
-      mdConstructor.addHeaderTag("Functions info");
-
-      for (const func of functions) {
-        this.generateFunctionBlock(mdConstructor, func);
-        this.generateDocumentationBlock(mdConstructor, func.documentationLines);
+      for (const usingForDirective of usingForDirectives) {
+        this.generateUsingForDirectiveBlock(mdConstructor, usingForDirective);
+        if (usingForDirective.natSpecDocumentation)
+          this.generateDocumentationBlock(mdConstructor, usingForDirective.natSpecDocumentation);
       }
     }
 
@@ -74,7 +53,7 @@ class MDGenerator {
 
       for (const enumDef of enums) {
         this.generateEnumBlock(mdConstructor, enumDef);
-        this.generateDocumentationBlock(mdConstructor, enumDef.documentationLines);
+        if (enumDef.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, enumDef.natSpecDocumentation);
       }
     }
 
@@ -85,7 +64,41 @@ class MDGenerator {
 
       for (const struct of structs) {
         this.generateStructBlock(mdConstructor, struct);
-        this.generateDocumentationBlock(mdConstructor, struct.documentationLines);
+        if (struct.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, struct.natSpecDocumentation);
+      }
+    }
+
+    const events: EventDefinitionWithDocumentation[] = contractInfo.events;
+
+    if (events.length > 0) {
+      mdConstructor.addHeaderTag("Events info");
+
+      for (const event of events) {
+        this.generateEventBlock(mdConstructor, event);
+        if (event.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, event.natSpecDocumentation);
+      }
+    }
+
+    const errors: ErrorDefinitionWithDocumentation[] = contractInfo.errors;
+
+    if (errors.length > 0) {
+      mdConstructor.addHeaderTag("Errors info");
+
+      for (const error of errors) {
+        this.generateErrorBlock(mdConstructor, error);
+        if (error.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, error.natSpecDocumentation);
+      }
+    }
+
+    const stateVariables: VariableDeclarationWithDocumentation[] = contractInfo.stateVariables;
+
+    if (stateVariables.length > 0) {
+      mdConstructor.addHeaderTag("State variables info");
+
+      for (const stateVariable of stateVariables) {
+        this.generateStateVariableBlock(mdConstructor, stateVariable);
+        if (stateVariable.natSpecDocumentation)
+          this.generateDocumentationBlock(mdConstructor, stateVariable.natSpecDocumentation);
       }
     }
 
@@ -96,41 +109,44 @@ class MDGenerator {
 
       for (const modifier of modifiers) {
         this.generateModifierBlock(mdConstructor, modifier);
-        this.generateDocumentationBlock(mdConstructor, modifier.documentationLines);
+        if (modifier.natSpecDocumentation)
+          this.generateDocumentationBlock(mdConstructor, modifier.natSpecDocumentation);
       }
     }
 
-    const usingForDirectives: UsingForDirectiveWithDocumentation[] = contractInfo.usingForDirectives;
+    const functions: FunctionDefinitionWithDocumentation[] = contractInfo.functions;
 
-    if (usingForDirectives.length > 0) {
-      mdConstructor.addHeaderTag("Using for directives info");
+    if (functions.length > 0) {
+      mdConstructor.addHeaderTag("Functions info");
 
-      for (const usingForDirective of usingForDirectives) {
-        this.generateUsingForDirectiveBlock(mdConstructor, usingForDirective);
-        this.generateDocumentationBlock(mdConstructor, usingForDirective.documentationLines);
+      for (const func of functions) {
+        this.generateFunctionBlock(mdConstructor, func);
+        if (func.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, func.natSpecDocumentation);
       }
     }
 
     return mdConstructor.getContractTagsStr();
   }
 
-  generateDocumentationBlock(mdConstructor: MDConstructor, documentation: DocumentationLine[]) {
-    for (const docLine of documentation) {
-      let res: string = "";
-      if (docLine.tag === "notice") {
-        res = docLine.description;
-      }
-      if (docLine.tag === "dev") {
-        res = `_${docLine.description.trim().split("\n").join("_\n_")}_`;
-      }
-      if (docLine.tag === "inheritdoc") {
-        // TODO: add inheritdoc
-      }
-      if (docLine.tag === "author") {
-        res = `Author: ${docLine.description}`;
-      }
-      mdConstructor.addParagraphTag(res);
+  generateDocumentationBlock(mdConstructor: MDConstructor, documentation: NatSpecDocumentation) {
+    const res = [];
+    if (documentation.author) {
+      res.push(`Author: ${documentation.author}`);
     }
+    if (documentation.title) {
+      res.push(documentation.title);
+    }
+    if (documentation.notice) {
+      res.push(documentation.notice);
+    }
+    if (documentation.dev) {
+      res.push(`_${documentation.dev.trim().split("\n").join("_\n_")}_`);
+    }
+    if (documentation.custom) {
+      res.push(documentation.custom);
+    }
+
+    mdConstructor.addParagraphTag(res.join("\n"));
   }
 
   generateFunctionBlock(mdConstructor: MDConstructor, funcInfo: FunctionDefinitionWithDocumentation) {
@@ -139,10 +155,10 @@ class MDGenerator {
 
     this.generateBaseMethodBlock(mdConstructor, funcHeader, funcInfo);
 
-    if (funcInfo.returnParameters.parameters.length > 0) {
+    if (funcInfo.natSpecDocumentation && funcInfo.natSpecDocumentation.returns) {
       mdConstructor.addParagraphTag("Return values:");
 
-      this.generateElementsBlock(mdConstructor, funcInfo.returnParameters.parameters);
+      this.generateElementsBlock(mdConstructor, funcInfo.natSpecDocumentation.returns);
     }
   }
 
@@ -168,6 +184,11 @@ class MDGenerator {
     mdConstructor.addCodeTag([errorInfo.fullSign]);
   }
 
+  generateStateVariableBlock(mdConstructor: MDConstructor, stateVariableInfo: VariableDeclarationWithDocumentation) {
+    mdConstructor.addHeaderTag(stateVariableInfo.name, FUNCTION_NAME_H_SIZE);
+    mdConstructor.addCodeTag([stateVariableInfo.fullSign]);
+  }
+
   generateStructBlock(mdConstructor: MDConstructor, structInfo: StructDefinitionWithDocumentation) {
     mdConstructor.addHeaderTag(structInfo.name, FUNCTION_NAME_H_SIZE);
     mdConstructor.addCodeTag([structInfo.fullSign]);
@@ -186,19 +207,27 @@ class MDGenerator {
     mdConstructor.addHeaderTag(methodHeader, FUNCTION_NAME_H_SIZE);
     mdConstructor.addCodeTag([methodInfo.fullSign]);
 
-    if (methodInfo.parameters.parameters.length > 0) {
+    if (methodInfo.natSpecDocumentation && methodInfo.natSpecDocumentation.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateElementsBlock(mdConstructor, methodInfo.parameters.parameters);
+      this.generateElementsBlock(mdConstructor, methodInfo.natSpecDocumentation.params);
     }
   }
 
-  generateElementsBlock(mdConstructor: MDConstructor, elements: VariableDeclaration[]) {
+  generateElementsBlock(
+    mdConstructor: MDConstructor,
+    documentation: {
+      name?: string;
+      type: string;
+      description: string;
+    }[]
+  ) {
     const raws: string[][] = [];
 
-    elements.map((el: VariableDeclaration) => {
-      raws.push([el.name, el.typeDescriptions.typeString || "", el.documentation?.text || ""]);
-    });
+    for (let i = 0; i < documentation.length; i++) {
+      const element = documentation[i];
+      raws.push([element.name ? element.name : `[${i}]`, element.type, element.description]);
+    }
 
     mdConstructor.addTableTag(["Name", "Type", "Description"], raws);
   }

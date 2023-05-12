@@ -20,12 +20,12 @@ import { DEFAULT_LICENSE } from "./constants";
 import {
   ContractInfo,
   Documentation,
-  DocumentationLine,
   EnumDefinitionWithDocumentation,
   ErrorDefinitionWithDocumentation,
   EventDefinitionWithDocumentation,
   FunctionDefinitionWithDocumentation,
   ModifierDefinitionWithDocumentation,
+  NatSpecDocumentation,
   StructDefinitionWithDocumentation,
   UsingForDirectiveWithDocumentation,
   VariableDeclarationWithDocumentation,
@@ -60,7 +60,7 @@ class Parser {
     const contractInfo: ContractInfo = {
       name: contractNode.name,
       license: license,
-      baseDescription: this.parseDocumentation(contractNode),
+      baseDescription: this.parseNatSpecDocumentation(contractNode),
       functions: this.parseFunctions(contractNode),
       stateVariables: this.parseStateVariables(contractNode),
       events: this.parseEvents(contractNode),
@@ -74,6 +74,8 @@ class Parser {
       contractKind: contractNode.contractKind,
     };
 
+    this.writeToFile(contractInfo.name, contractInfo);
+
     return contractInfo;
   }
 
@@ -85,7 +87,7 @@ class Parser {
       const functionDefinitionWithParsedData: FunctionDefinitionWithDocumentation = {
         ...functionDefinition,
         fullSign: this.parseFullFunctionSign(functionDefinition),
-        documentationLines: this.parseDocumentation(functionDefinition),
+        natSpecDocumentation: this.parseNatSpecDocumentation(functionDefinition),
       };
 
       functions.push(functionDefinitionWithParsedData);
@@ -99,11 +101,11 @@ class Parser {
 
     const stateVariables: VariableDeclarationWithDocumentation[] = [];
     for (const stateVariable of stateVariableGenerator) {
+      if (!stateVariable.stateVariable) continue;
       const stateVariableWithParsedData: VariableDeclarationWithDocumentation = {
         ...stateVariable,
         fullSign: this.parseFullStateVariableSign(stateVariable),
-        documentationLines: [],
-        // documentationLines: this.parseDocumentation(stateVariable),
+        natSpecDocumentation: this.parseNatSpecDocumentation(stateVariable),
       };
 
       stateVariables.push(stateVariableWithParsedData);
@@ -120,7 +122,7 @@ class Parser {
       const eventWithParsedData: EventDefinitionWithDocumentation = {
         ...event,
         fullSign: this.parseFullEventSign(event),
-        documentationLines: this.parseDocumentation(event),
+        natSpecDocumentation: this.parseNatSpecDocumentation(event),
       };
 
       events.push(eventWithParsedData);
@@ -137,7 +139,7 @@ class Parser {
       const errorWithParsedData: ErrorDefinitionWithDocumentation = {
         ...error,
         fullSign: this.parseFullErrorSign(error),
-        documentationLines: this.parseDocumentation(error),
+        natSpecDocumentation: this.parseNatSpecDocumentation(error),
       };
 
       errors.push(errorWithParsedData);
@@ -154,7 +156,7 @@ class Parser {
       const enumDefinitionWithParsedData: EnumDefinitionWithDocumentation = {
         ...enumDefinition,
         fullSign: this.parseFullEnumSign(enumDefinition),
-        documentationLines: this.parseDocumentation(enumDefinition),
+        natSpecDocumentation: this.parseNatSpecDocumentation(enumDefinition),
       };
 
       enums.push(enumDefinitionWithParsedData);
@@ -171,7 +173,7 @@ class Parser {
       const structWithParsedData: StructDefinitionWithDocumentation = {
         ...struct,
         fullSign: this.parseFullStructSign(struct),
-        documentationLines: this.parseDocumentation(struct),
+        natSpecDocumentation: this.parseNatSpecDocumentation(struct),
       };
 
       structs.push(structWithParsedData);
@@ -188,7 +190,7 @@ class Parser {
       const modifierWithParsedData: ModifierDefinitionWithDocumentation = {
         ...modifier,
         fullSign: this.parseFullModifierSign(modifier),
-        documentationLines: this.parseDocumentation(modifier),
+        natSpecDocumentation: this.parseNatSpecDocumentation(modifier),
       };
 
       modifiers.push(modifierWithParsedData);
@@ -205,7 +207,7 @@ class Parser {
       const usingForDirectiveWithParsedData: UsingForDirectiveWithDocumentation = {
         ...usingForDirective,
         fullSign: this.parseFullUsingForDirectiveSign(usingForDirective),
-        documentationLines: this.parseDocumentation(usingForDirective),
+        // natSpecDocumentation: this.parseNatSpecDocumentation(usingForDirective),
       };
 
       usingForDirectives.push(usingForDirectiveWithParsedData);
@@ -260,7 +262,7 @@ class Parser {
   }
 
   parseFullStateVariableSign(stateVariable: VariableDeclaration): string {
-    return "";
+    return `${stateVariable.typeDescriptions.typeString} ${stateVariable.name}`;
   }
 
   parseFullEventSign(eventDefinition: EventDefinition): string {
@@ -318,7 +320,7 @@ class Parser {
     return text.replace(reCommentSymbols, "").replace(reSpaceAtBeginningOfLine, "").trim();
   }
 
-  getNearestDocumentation(node: FunctionDefinition): string | null {
+  getNearestDocumentation(node: FunctionDefinition | VariableDeclaration): string | null {
     if (node.documentation) {
       return node.documentation.text;
     }
@@ -334,27 +336,105 @@ class Parser {
     return null;
   }
 
-  parseDocumentation(node: any): DocumentationLine[] {
-    const sourceText = this.getNearestDocumentation(node);
+  parseNatSpecDocumentation(
+    node: any
+    // | FunctionDefinition
+    // | VariableDeclaration
+    // | EventDefinition
+    // | ErrorDefinition
+    // // | EnumDefinition
+    // // | StructDefinition
+    // | ModifierDefinition
+  ): NatSpecDocumentation {
+    const natSpec: NatSpecDocumentation = {};
+    let sourceText: string | null | undefined = node.documentation?.text;
+    // if (node instanceof FunctionDefinition) {
+    sourceText = this.getNearestDocumentation(node);
+    // }
+
     if (!sourceText) {
-      return [];
+      return natSpec;
     }
 
     const text = this.deleteComments(sourceText);
 
     const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
-    const matches = [...text.matchAll(natSpecRegex)];
+    for (const match of text.matchAll(natSpecRegex)) {
+      const [, tag = "notice", text] = match;
+      if (tag == "title") {
+        natSpec.title = text;
+      }
+      if (tag == "author") {
+        natSpec.author = text;
+      }
+      if (tag == "notice") {
+        natSpec.notice = natSpec.notice ? natSpec.notice + text : text;
+      }
+      if (tag == "dev") {
+        natSpec.dev = natSpec.dev ? natSpec.dev + text : text;
+      }
+      if (tag == "param") {
+        node = node as
+          | FunctionDefinition
+          | EventDefinition
+          | ErrorDefinition
+          // | EnumDefinition
+          // | StructDefinition
+          | ModifierDefinition;
+        const paramRegex = /^(\w+) (.*)$/gm;
+        const matches = paramRegex.exec(text);
+        if (!matches) {
+          // TODO: error
+          continue;
+        }
+        const [, paramName, paramDescription] = matches;
+        const variableDeclaration = node.parameters.parameters.find(
+          (param: VariableDeclaration) => param.name == paramName
+        );
+        if (!variableDeclaration) {
+          // TODO: error
+          continue;
+        }
+        const type = variableDeclaration.typeDescriptions.typeString!;
 
-    const documentationLines: DocumentationLine[] = matches.map((match) => {
-      const [, tag, text] = match;
-      return {
-        tag: tag || "notice",
-        description: text,
-      };
-    });
+        natSpec.params = natSpec.params || [];
+        natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+      }
+      if (tag == "return") {
+        node = node as FunctionDefinition;
+        natSpec.returns = natSpec.returns || [];
 
-    return documentationLines;
+        const currentIndex = natSpec.returns.length;
+
+        const currentParameter = node.returnParameters.parameters[currentIndex];
+
+        if (!currentParameter) {
+          // TODO: error
+          continue;
+        }
+
+        const currentParameterName = currentParameter.name;
+        const type = currentParameter.typeDescriptions.typeString!;
+
+        // name is not defined for return parameter
+        if (!currentParameterName) {
+          natSpec.returns.push({ type: type, description: text });
+        } else {
+          const returnRegex = /^(\w+) (.*)$/gm;
+          const matches = returnRegex.exec(text);
+
+          if (!matches) {
+            // TODO: error
+            continue;
+          }
+          const [, paramName, paramDescription] = matches;
+          // TODO: check if paramName is equal to currentParameterName
+          natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
+        }
+      }
+    }
+    return natSpec;
   }
 }
 
