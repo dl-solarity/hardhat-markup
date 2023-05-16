@@ -45,6 +45,7 @@ export interface UsingForDirectiveWithDocumentation extends UsingForDirective, D
 
 export interface Documentation {
   fullSign: string;
+  title?: string;
   natSpecDocumentation?: NatSpecDocumentation;
 }
 
@@ -55,7 +56,7 @@ export interface NatSpecDocumentation {
   dev?: string;
   params?: {
     name?: string;
-    type: string;
+    type?: string;
     description: string;
   }[];
   returns?: {

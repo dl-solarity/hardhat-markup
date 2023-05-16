@@ -33,7 +33,7 @@
   "homepage": "https://github.com/dl-solidity-library/hardhat-markup#readme",
   "dependencies": {
     "json2md": "^2.0.0",
-    "solidity-ast": "^0.4.46"
+    "solidity-ast": "^0.4.49"
   },
   "peerDependencies": {
     "hardhat": "^2.10.0"

@@ -4,22 +4,18 @@ import {
   EnumDefinition,
   ErrorDefinition,
   EventDefinition,
-  Expression,
   FunctionDefinition,
-  Identifier,
   ModifierDefinition,
-  ModifierInvocation,
+  SourceLocation,
   SourceUnit,
   StructDefinition,
-  StructuredDocumentation,
   UsingForDirective,
   VariableDeclaration,
 } from "solidity-ast";
-import { ASTDereferencer, astDereferencer, findAll, SrcDecoder, srcDecoder } from "solidity-ast/utils";
+import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils";
 import { DEFAULT_LICENSE } from "./constants";
 import {
   ContractInfo,
-  Documentation,
   EnumDefinitionWithDocumentation,
   ErrorDefinitionWithDocumentation,
   EventDefinitionWithDocumentation,
@@ -34,32 +30,24 @@ import {
 class Parser {
   private contractBuildInfo: BuildInfo;
   private deref: ASTDereferencer;
-  private decodeSrc: SrcDecoder;
 
   constructor(contractBuildInfo: BuildInfo) {
     this.contractBuildInfo = contractBuildInfo;
 
     this.deref = astDereferencer(contractBuildInfo.output);
-    this.decodeSrc = srcDecoder(contractBuildInfo.input, contractBuildInfo.output);
-  }
-
-  writeToFile(fileName: string, data: any) {
-    var fs = require("fs");
-    fs.writeFile("parser2/" + fileName + ".json", JSON.stringify(data), "utf8", function () {});
   }
 
   parseContractInfo(source: string, name: string): ContractInfo {
-    const desiredSource = this.contractBuildInfo.output.sources[source];
-    const sourceUnit = desiredSource.ast as SourceUnit;
+    const sourceUnit: SourceUnit = this.contractBuildInfo.output.sources[source].ast;
 
-    const license = this.parseLicense(sourceUnit);
-    const contractNode = sourceUnit.nodes.find(
-      (node) => node.nodeType === "ContractDefinition" && node.name === name
+    const contractNode: ContractDefinition = sourceUnit.nodes.find(
+      (node) => isNodeType("ContractDefinition", node) && node.name === name
     ) as ContractDefinition;
+    if (!contractNode) throw new Error(`Contract ${name} not found in ${source}`);
 
     const contractInfo: ContractInfo = {
       name: contractNode.name,
-      license: license,
+      license: this.parseLicense(sourceUnit),
       baseDescription: this.parseNatSpecDocumentation(contractNode),
       functions: this.parseFunctions(contractNode),
       stateVariables: this.parseStateVariables(contractNode),
@@ -74,9 +62,11 @@ class Parser {
       contractKind: contractNode.contractKind,
     };
 
-    this.writeToFile(contractInfo.name, contractInfo);
-
     return contractInfo;
+  }
+
+  isPublicOrExternal(node: FunctionDefinition | VariableDeclaration): boolean {
+    return node.visibility === "public" || node.visibility === "external";
   }
 
   parseFunctions(contractDefinition: ContractDefinition): FunctionDefinitionWithDocumentation[] {
@@ -84,9 +74,18 @@ class Parser {
 
     const functions: FunctionDefinitionWithDocumentation[] = [];
     for (const functionDefinition of functionGenerator) {
+      if (!this.isPublicOrExternal(functionDefinition)) continue;
+      const funcSelectorString = functionDefinition.functionSelector
+        ? ` (0x${functionDefinition.functionSelector})`
+        : "";
+      const funcHeader = `${
+        functionDefinition.name ? functionDefinition.name : functionDefinition.kind
+      }${funcSelectorString}`;
+
       const functionDefinitionWithParsedData: FunctionDefinitionWithDocumentation = {
         ...functionDefinition,
         fullSign: this.parseFullFunctionSign(functionDefinition),
+        title: funcHeader,
         natSpecDocumentation: this.parseNatSpecDocumentation(functionDefinition),
       };
 
@@ -102,9 +101,16 @@ class Parser {
     const stateVariables: VariableDeclarationWithDocumentation[] = [];
     for (const stateVariable of stateVariableGenerator) {
       if (!stateVariable.stateVariable) continue;
+      if (!this.isPublicOrExternal(stateVariable)) continue;
+
+      const stateVariableHeader = `${stateVariable.name}${
+        stateVariable.functionSelector ? ` (0x${stateVariable.functionSelector})` : ""
+      }`;
+
       const stateVariableWithParsedData: VariableDeclarationWithDocumentation = {
         ...stateVariable,
         fullSign: this.parseFullStateVariableSign(stateVariable),
+        title: stateVariableHeader,
         natSpecDocumentation: this.parseNatSpecDocumentation(stateVariable),
       };
 
@@ -122,6 +128,7 @@ class Parser {
       const eventWithParsedData: EventDefinitionWithDocumentation = {
         ...event,
         fullSign: this.parseFullEventSign(event),
+        title: event.name,
         natSpecDocumentation: this.parseNatSpecDocumentation(event),
       };
 
@@ -139,6 +146,7 @@ class Parser {
       const errorWithParsedData: ErrorDefinitionWithDocumentation = {
         ...error,
         fullSign: this.parseFullErrorSign(error),
+        title: error.name,
         natSpecDocumentation: this.parseNatSpecDocumentation(error),
       };
 
@@ -156,6 +164,7 @@ class Parser {
       const enumDefinitionWithParsedData: EnumDefinitionWithDocumentation = {
         ...enumDefinition,
         fullSign: this.parseFullEnumSign(enumDefinition),
+        title: enumDefinition.name,
         natSpecDocumentation: this.parseNatSpecDocumentation(enumDefinition),
       };
 
@@ -173,6 +182,7 @@ class Parser {
       const structWithParsedData: StructDefinitionWithDocumentation = {
         ...struct,
         fullSign: this.parseFullStructSign(struct),
+        title: struct.name,
         natSpecDocumentation: this.parseNatSpecDocumentation(struct),
       };
 
@@ -190,6 +200,7 @@ class Parser {
       const modifierWithParsedData: ModifierDefinitionWithDocumentation = {
         ...modifier,
         fullSign: this.parseFullModifierSign(modifier),
+        title: modifier.name,
         natSpecDocumentation: this.parseNatSpecDocumentation(modifier),
       };
 
@@ -207,7 +218,6 @@ class Parser {
       const usingForDirectiveWithParsedData: UsingForDirectiveWithDocumentation = {
         ...usingForDirective,
         fullSign: this.parseFullUsingForDirectiveSign(usingForDirective),
-        // natSpecDocumentation: this.parseNatSpecDocumentation(usingForDirective),
       };
 
       usingForDirectives.push(usingForDirectiveWithParsedData);
@@ -221,8 +231,9 @@ class Parser {
     const functionName = functionDefinition.name.length === 0 ? "" : ` ${functionDefinition.name}`;
     const parameters = functionDefinition.parameters.parameters
       .map(
-        (variableDeclaration: VariableDeclaration) =>
-          variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name
+        (variableDeclaration) =>
+          variableDeclaration.typeDescriptions.typeString +
+          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
       )
       .join(", ");
     const visibility = kind === "constructor" ? "" : ` ${functionDefinition.visibility}`;
@@ -234,11 +245,16 @@ class Parser {
         : " " +
           functionDefinition.modifiers
             .map(
-              (modifier: ModifierInvocation) =>
+              (modifier) =>
                 modifier.modifierName.name +
                 (modifier.arguments
                   ? `(${modifier.arguments
-                      .map((expression: Expression) => (expression as Identifier).name)
+                      .map((expression) => {
+                        if (isNodeType("Identifier", expression)) return expression.name;
+                        if (isNodeType("Literal", expression)) return expression.value;
+                        // TODO: handle other cases
+                        return "";
+                      })
                       .join(", ")})`
                   : "")
             )
@@ -251,8 +267,11 @@ class Parser {
         ? ""
         : " returns (" +
           functionDefinition.returnParameters.parameters
-            .map((variableDeclaration: VariableDeclaration) =>
-              (variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name).trim()
+            .map(
+              (variableDeclaration) =>
+                `${variableDeclaration.typeDescriptions.typeString}${
+                  variableDeclaration.storageLocation === "default" ? "" : ` ${variableDeclaration.storageLocation}`
+                }${variableDeclaration.name ? ` ${variableDeclaration.name}` : ""}`
             )
             .join(", ") +
           ")";
@@ -261,21 +280,50 @@ class Parser {
     return fullMethodSign;
   }
 
+  parseStringFromSourceCode(src: SourceLocation): string {
+    const [start, end, id] = src.split(":").map((x) => parseInt(x));
+
+    const sourceFile =
+      this.contractBuildInfo.input.sources[
+        Object.values(this.contractBuildInfo.output.sources).find((source) => source.id === id)?.ast.absolutePath
+      ].content;
+
+    return sourceFile.substring(start, start + end);
+  }
+
   parseFullStateVariableSign(stateVariable: VariableDeclaration): string {
-    return `${stateVariable.typeDescriptions.typeString} ${stateVariable.name}`;
+    // TODO: Extract the source code
+    // EXPERIMENTAL
+    if (stateVariable.value) {
+      return `${stateVariable.typeDescriptions.typeString}${
+        stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
+      } ${stateVariable.name} = ${this.parseStringFromSourceCode(stateVariable.value.src)};`;
+    }
+    return `${stateVariable.typeDescriptions.typeString}${
+      stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
+    } ${stateVariable.name};`;
   }
 
   parseFullEventSign(eventDefinition: EventDefinition): string {
     const parameters = eventDefinition.parameters.parameters
-      .map((variableDeclaration) => variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name)
+      .map(
+        (variableDeclaration) =>
+          variableDeclaration.typeDescriptions.typeString +
+          (variableDeclaration.indexed ? " indexed" : "") +
+          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
+      )
       .join(", ");
 
-    return `event ${eventDefinition.name}(${parameters})`;
+    return `event ${eventDefinition.name}(${parameters})${eventDefinition.anonymous ? " anonymous" : ""}`;
   }
 
   parseFullErrorSign(errorDefinition: ErrorDefinition): string {
     const parameters = errorDefinition.parameters.parameters
-      .map((variableDeclaration) => variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name)
+      .map(
+        (variableDeclaration) =>
+          variableDeclaration.typeDescriptions.typeString +
+          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
+      )
       .join(", ");
 
     return `error ${errorDefinition.name}(${parameters})`;
@@ -283,31 +331,34 @@ class Parser {
 
   parseFullStructSign(structDefinition: StructDefinition): string {
     const parameters = structDefinition.members
-      .map(
-        (variableDeclaration) =>
-          "\t" + variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name + ";"
-      )
+      .map((variableDeclaration) => `\t${variableDeclaration.typeDescriptions.typeString} ${variableDeclaration.name};`)
       .join("\n");
 
     return `struct ${structDefinition.name} {\n${parameters}\n}`;
   }
 
   parseFullEnumSign(enumDefinition: EnumDefinition): string {
-    const parameters = enumDefinition.members.map((enumValue) => "\t" + enumValue.name).join(",\n");
+    const parameters = enumDefinition.members.map((enumValue) => `\t ${enumValue.name}`).join(",\n");
 
     return `enum ${enumDefinition.name} {\n${parameters}\n}`;
   }
 
   parseFullModifierSign(modifierDefinition: ModifierDefinition): string {
     const parameters = modifierDefinition.parameters.parameters
-      .map((variableDeclaration) => variableDeclaration.typeDescriptions.typeString + " " + variableDeclaration.name)
+      .map(
+        (variableDeclaration) =>
+          variableDeclaration.typeDescriptions.typeString +
+          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
+      )
       .join(", ");
 
     return `modifier ${modifierDefinition.name}(${parameters})`;
   }
 
   parseFullUsingForDirectiveSign(usingForDirective: UsingForDirective): string {
-    return `using ${usingForDirective.libraryName?.name} for ${usingForDirective.typeName?.typeDescriptions.typeString}`;
+    return `using ${usingForDirective.libraryName?.name} for ${
+      usingForDirective.typeName ? usingForDirective.typeName.typeDescriptions.typeString : "*"
+    }`;
   }
 
   parseLicense(node: SourceUnit): string {
@@ -320,120 +371,168 @@ class Parser {
     return text.replace(reCommentSymbols, "").replace(reSpaceAtBeginningOfLine, "").trim();
   }
 
-  getNearestDocumentation(node: FunctionDefinition | VariableDeclaration): string | null {
-    if (node.documentation) {
-      return node.documentation.text;
+  getValidParentNodeToInheritDocumentation(
+    baseNode: FunctionDefinition | VariableDeclaration
+  ): FunctionDefinition | null {
+    if (!baseNode.baseFunctions || baseNode.baseFunctions.length !== 1) {
+      return null;
     }
-    if (node.baseFunctions) {
-      for (const id of node.baseFunctions) {
-        const newNode = this.deref(node.nodeType, id);
-        const documentation = this.getNearestDocumentation(newNode);
-        if (documentation) {
-          return documentation;
-        }
+
+    const parentNode = this.deref("FunctionDefinition", baseNode.baseFunctions[0]);
+
+    if (isNodeType("VariableDeclaration", baseNode)) {
+      return parentNode;
+    }
+
+    if (baseNode.parameters.parameters.length !== parentNode.parameters.parameters.length) {
+      return null;
+    }
+
+    for (let i = 0; i < baseNode.parameters.parameters.length; i++) {
+      if (baseNode.parameters.parameters[i].name !== parentNode.parameters.parameters[i].name) {
+        return null;
       }
     }
-    return null;
+
+    return parentNode;
   }
 
   parseNatSpecDocumentation(
-    node: any
-    // | FunctionDefinition
-    // | VariableDeclaration
-    // | EventDefinition
-    // | ErrorDefinition
-    // // | EnumDefinition
-    // // | StructDefinition
-    // | ModifierDefinition
+    baseNode:
+      | any
+      | FunctionDefinitionWithDocumentation
+      | VariableDeclarationWithDocumentation
+      | EventDefinitionWithDocumentation
+      | ErrorDefinitionWithDocumentation
+      | EnumDefinitionWithDocumentation
+      | StructDefinitionWithDocumentation
+      | ModifierDefinitionWithDocumentation
   ): NatSpecDocumentation {
-    const natSpec: NatSpecDocumentation = {};
-    let sourceText: string | null | undefined = node.documentation?.text;
-    // if (node instanceof FunctionDefinition) {
-    sourceText = this.getNearestDocumentation(node);
-    // }
+    baseNode.natSpecDocumentation ??= {};
+    let natSpec: NatSpecDocumentation = baseNode.natSpecDocumentation;
 
-    if (!sourceText) {
-      return natSpec;
-    }
-
-    const text = this.deleteComments(sourceText);
-
-    const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
-
-    for (const match of text.matchAll(natSpecRegex)) {
-      const [, tag = "notice", text] = match;
-      if (tag == "title") {
-        natSpec.title = text;
-      }
-      if (tag == "author") {
-        natSpec.author = text;
-      }
-      if (tag == "notice") {
-        natSpec.notice = natSpec.notice ? natSpec.notice + text : text;
-      }
-      if (tag == "dev") {
-        natSpec.dev = natSpec.dev ? natSpec.dev + text : text;
-      }
-      if (tag == "param") {
-        node = node as
-          | FunctionDefinition
-          | EventDefinition
-          | ErrorDefinition
-          // | EnumDefinition
-          // | StructDefinition
-          | ModifierDefinition;
-        const paramRegex = /^(\w+) (.*)$/gm;
-        const matches = paramRegex.exec(text);
-        if (!matches) {
-          // TODO: error
-          continue;
+    const nodes = [baseNode];
+    for (let i = 0; i < nodes.length; i++) {
+      let node = nodes[i];
+      if (!node.documentation) {
+        const parentNode = this.getValidParentNodeToInheritDocumentation(node);
+        if (parentNode) {
+          nodes.push(parentNode);
         }
-        const [, paramName, paramDescription] = matches;
-        const variableDeclaration = node.parameters.parameters.find(
-          (param: VariableDeclaration) => param.name == paramName
-        );
-        if (!variableDeclaration) {
-          // TODO: error
-          continue;
-        }
-        const type = variableDeclaration.typeDescriptions.typeString!;
-
-        natSpec.params = natSpec.params || [];
-        natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+        continue;
       }
-      if (tag == "return") {
-        node = node as FunctionDefinition;
-        natSpec.returns = natSpec.returns || [];
 
-        const currentIndex = natSpec.returns.length;
+      let sourceText: string = node.documentation.text;
 
-        const currentParameter = node.returnParameters.parameters[currentIndex];
+      if (sourceText) {
+        const text = this.deleteComments(sourceText);
 
-        if (!currentParameter) {
-          // TODO: error
-          continue;
-        }
+        const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
-        const currentParameterName = currentParameter.name;
-        const type = currentParameter.typeDescriptions.typeString!;
+        for (const match of text.matchAll(natSpecRegex)) {
+          const [, tag = "notice", text] = match;
+          if (tag == "title" && !natSpec.title) {
+            natSpec.title = text;
+          } else if (tag == "author" && !natSpec.author) {
+            natSpec.author = text;
+          } else if (tag == "notice" && !natSpec.notice) {
+            natSpec.notice = text;
+          } else if (tag == "dev" && !natSpec.dev) {
+            natSpec.dev = text;
+          } else if (tag == "param") {
+            natSpec.params ??= [];
 
-        // name is not defined for return parameter
-        if (!currentParameterName) {
-          natSpec.returns.push({ type: type, description: text });
-        } else {
-          const returnRegex = /^(\w+) (.*)$/gm;
-          const matches = returnRegex.exec(text);
+            const paramRegex = /^(\w+) (.*)$/gm;
+            const matches = paramRegex.exec(text);
+            if (!matches) {
+              // TODO: error
+              continue;
+            }
+            const [, paramName, paramDescription] = matches;
 
-          if (!matches) {
-            // TODO: error
-            continue;
+            // if tag is already defined, skip it
+            if (natSpec.params.find((param) => param.name == paramName)) {
+              continue;
+            }
+
+            let params: VariableDeclaration[];
+            // if (isNodeType(["EnumDefinition", "StructDefinition"], node)) {
+            if (node.nodeType === "EnumDefinition" || node.nodeType === "StructDefinition") {
+              params = node.members;
+            } else {
+              params = node.parameters.parameters;
+            }
+
+            const variableDeclaration = params.find((param) => param.name == paramName);
+            if (!variableDeclaration) {
+              // TODO: error
+              continue;
+            }
+
+            const type = variableDeclaration.typeDescriptions?.typeString || "";
+
+            natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+          } else if (tag === "return") {
+            natSpec.returns ??= [];
+
+            let currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
+              ? node.returnParameters.parameters[natSpec.returns.length]
+              : node;
+
+            if (!currentParameter) {
+              // TODO: error
+              console.log("error");
+              console.log(node);
+              continue;
+            }
+
+            const currentParameterName = currentParameter.name;
+            const type = currentParameter.typeDescriptions.typeString!;
+
+            // if name is not defined for return parameter
+            if (!currentParameterName) {
+              natSpec.returns.push({ type: type, description: text });
+            } else {
+              const returnRegex = /^(\w+) (.*)$/gm;
+              const matches = returnRegex.exec(text);
+
+              if (!matches) {
+                // TODO: error
+                console.log("error");
+                console.log(node);
+                continue;
+              }
+              const [, paramName, paramDescription] = matches;
+              // TODO: check if paramName is equal to currentParameterName
+              natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
+            }
+          } else if (tag.startsWith("custom:")) {
+            const customTag = tag.replace("custom:", "");
+            natSpec.custom ??= {};
+            natSpec.custom[customTag] = text;
+          } else if (tag === "inheritdoc") {
+            const parentNodeRegex = /^(\w+)$/gm;
+            const matches = parentNodeRegex.exec(text);
+            if (!matches) {
+              // TODO: error
+              continue;
+            }
+            const [, parentName] = matches;
+            const parentNode = node.baseFunctions
+              .map((id: number) => this.deref("FunctionDefinition", id))
+              .find(
+                (node: FunctionDefinition) => this.deref("ContractDefinition", node.scope).canonicalName === parentName
+              );
+            if (!parentNode) {
+              // TODO: error
+              continue;
+            }
+            nodes.push(parentNode);
           }
-          const [, paramName, paramDescription] = matches;
-          // TODO: check if paramName is equal to currentParameterName
-          natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
         }
       }
     }
+
     return natSpec;
   }
 }
