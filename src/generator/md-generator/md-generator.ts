@@ -54,6 +54,8 @@ class MDGenerator {
 
     this.generateBlockInfo(mdConstructor, contractInfo.errors, "Errors info");
 
+    this.generateBlockInfo(mdConstructor, contractInfo.constants, "Constants info");
+
     this.generateBlockInfo(mdConstructor, contractInfo.stateVariables, "State variables info");
 
     this.generateBlockInfo(mdConstructor, contractInfo.modifiers, "Modifiers info");

@@ -50,6 +50,7 @@ class Parser {
       license: this.parseLicense(sourceUnit),
       baseDescription: this.parseNatSpecDocumentation(contractNode),
       functions: this.parseFunctions(contractNode),
+      constants: this.parseConstants(contractNode),
       stateVariables: this.parseStateVariables(contractNode),
       events: this.parseEvents(contractNode),
       errors: this.parseErrors(contractNode),
@@ -95,12 +96,34 @@ class Parser {
     return functions;
   }
 
+  parseConstants(contractDefinition: ContractDefinition): VariableDeclarationWithDocumentation[] {
+    const constantGenerator = findAll("VariableDeclaration", contractDefinition);
+
+    const constants: VariableDeclarationWithDocumentation[] = [];
+    for (const constant of constantGenerator) {
+      if (!constant.constant) continue;
+
+      const constantHeader = `${constant.name}${constant.functionSelector ? ` (0x${constant.functionSelector})` : ""}`;
+
+      const constantWithParsedData: VariableDeclarationWithDocumentation = {
+        ...constant,
+        fullSign: this.parseFullStateVariableSign(constant),
+        title: constantHeader,
+        natSpecDocumentation: this.parseNatSpecDocumentation(constant),
+      };
+
+      constants.push(constantWithParsedData);
+    }
+
+    return constants;
+  }
+
   parseStateVariables(contractDefinition: ContractDefinition): VariableDeclarationWithDocumentation[] {
     const stateVariableGenerator = findAll("VariableDeclaration", contractDefinition);
 
     const stateVariables: VariableDeclarationWithDocumentation[] = [];
     for (const stateVariable of stateVariableGenerator) {
-      if (!stateVariable.stateVariable) continue;
+      if (stateVariable.constant) continue;
       if (!this.isPublicOrExternal(stateVariable)) continue;
 
       const stateVariableHeader = `${stateVariable.name}${

@@ -15,6 +15,7 @@ export interface ContractInfo {
   license: string;
   baseDescription: NatSpecDocumentation;
   functions: FunctionDefinitionWithDocumentation[];
+  constants: VariableDeclarationWithDocumentation[];
   stateVariables: VariableDeclarationWithDocumentation[];
   events: EventDefinitionWithDocumentation[];
   errors: ErrorDefinitionWithDocumentation[];
