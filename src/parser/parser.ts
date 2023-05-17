@@ -12,20 +12,10 @@ import {
   UsingForDirective,
   VariableDeclaration,
 } from "solidity-ast";
+import { Node } from "solidity-ast/node";
 import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils";
 import { DEFAULT_LICENSE } from "./constants";
-import {
-  ContractInfo,
-  EnumDefinitionWithDocumentation,
-  ErrorDefinitionWithDocumentation,
-  EventDefinitionWithDocumentation,
-  FunctionDefinitionWithDocumentation,
-  ModifierDefinitionWithDocumentation,
-  NatSpecDocumentation,
-  StructDefinitionWithDocumentation,
-  UsingForDirectiveWithDocumentation,
-  VariableDeclarationWithDocumentation,
-} from "./types";
+import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
 
 class Parser {
   private contractBuildInfo: BuildInfo;
@@ -47,20 +37,34 @@ class Parser {
 
     const contractInfo: ContractInfo = {
       name: contractNode.name,
-      license: this.parseLicense(sourceUnit),
-      baseDescription: this.parseNatSpecDocumentation(contractNode),
-      functions: this.parseFunctions(contractNode),
-      constants: this.parseConstants(contractNode),
-      stateVariables: this.parseStateVariables(contractNode),
-      events: this.parseEvents(contractNode),
-      errors: this.parseErrors(contractNode),
-      enums: this.parseEnums(contractNode),
-      structs: this.parseStructs(contractNode),
-      modifiers: this.parseModifiers(contractNode),
-      usingForDirectives: this.parseUsingForDirectives(contractNode),
-      baseContracts: contractNode.baseContracts,
       isAbstract: contractNode.abstract,
       contractKind: contractNode.contractKind,
+      license: this.parseLicense(sourceUnit),
+      documentations: [
+        this.parseDocumentation([contractNode], ""),
+        this.parseDocumentation([...findAll("UsingForDirective", contractNode)], "Using for directives info"),
+        this.parseDocumentation([...findAll("EnumDefinition", contractNode)], "Enums info"),
+        this.parseDocumentation([...findAll("StructDefinition", contractNode)], "Structs info"),
+        this.parseDocumentation([...findAll("EventDefinition", contractNode)], "Events info"),
+        this.parseDocumentation([...findAll("ErrorDefinition", contractNode)], "Errors info"),
+        this.parseDocumentation(
+          [...findAll("VariableDeclaration", contractNode)].filter(
+            (node) => node.constant && this.isPublicOrExternal(node)
+          ),
+          "Constants info"
+        ),
+        this.parseDocumentation(
+          [...findAll("VariableDeclaration", contractNode)].filter(
+            (node) => !node.constant && this.isPublicOrExternal(node)
+          ),
+          "State variables info"
+        ),
+        this.parseDocumentation([...findAll("ModifierDefinition", contractNode)], "Modifiers info"),
+        this.parseDocumentation(
+          [...findAll("FunctionDefinition", contractNode)].filter((node) => this.isPublicOrExternal(node)),
+          "Functions info"
+        ),
+      ],
     };
 
     return contractInfo;
@@ -70,183 +74,64 @@ class Parser {
     return node.visibility === "public" || node.visibility === "external";
   }
 
-  parseFunctions(contractDefinition: ContractDefinition): FunctionDefinitionWithDocumentation[] {
-    const functionGenerator = findAll("FunctionDefinition", contractDefinition);
-
-    const functions: FunctionDefinitionWithDocumentation[] = [];
-    for (const functionDefinition of functionGenerator) {
-      if (!this.isPublicOrExternal(functionDefinition)) continue;
-      const funcSelectorString = functionDefinition.functionSelector
-        ? ` (0x${functionDefinition.functionSelector})`
-        : "";
-      const funcHeader = `${
-        functionDefinition.name ? functionDefinition.name : functionDefinition.kind
-      }${funcSelectorString}`;
-
-      const functionDefinitionWithParsedData: FunctionDefinitionWithDocumentation = {
-        ...functionDefinition,
-        fullSign: this.parseFullFunctionSign(functionDefinition),
-        title: funcHeader,
-        natSpecDocumentation: this.parseNatSpecDocumentation(functionDefinition),
-      };
-
-      functions.push(functionDefinitionWithParsedData);
-    }
-
-    return functions;
+  parseSelector(node: FunctionDefinition | VariableDeclaration): string {
+    return node.functionSelector ? ` (0x${node.functionSelector})` : "";
   }
 
-  parseConstants(contractDefinition: ContractDefinition): VariableDeclarationWithDocumentation[] {
-    const constantGenerator = findAll("VariableDeclaration", contractDefinition);
-
-    const constants: VariableDeclarationWithDocumentation[] = [];
-    for (const constant of constantGenerator) {
-      if (!constant.constant) continue;
-
-      const constantHeader = `${constant.name}${constant.functionSelector ? ` (0x${constant.functionSelector})` : ""}`;
-
-      const constantWithParsedData: VariableDeclarationWithDocumentation = {
-        ...constant,
-        fullSign: this.parseFullStateVariableSign(constant),
-        title: constantHeader,
-        natSpecDocumentation: this.parseNatSpecDocumentation(constant),
-      };
-
-      constants.push(constantWithParsedData);
+  parseTitle(node: any): string {
+    if (node.nodeType === "FunctionDefinition") {
+      return `${node.name ? node.name : node.kind}${this.parseSelector(node)}`;
     }
-
-    return constants;
+    if (node.nodeType === "VariableDeclaration") {
+      return `${node.name}${this.parseSelector(node)}`;
+    }
+    if (node.nodeType === "ContractDefinition") {
+      return "";
+    }
+    return node.name;
   }
 
-  parseStateVariables(contractDefinition: ContractDefinition): VariableDeclarationWithDocumentation[] {
-    const stateVariableGenerator = findAll("VariableDeclaration", contractDefinition);
-
-    const stateVariables: VariableDeclarationWithDocumentation[] = [];
-    for (const stateVariable of stateVariableGenerator) {
-      if (stateVariable.constant) continue;
-      if (!this.isPublicOrExternal(stateVariable)) continue;
-
-      const stateVariableHeader = `${stateVariable.name}${
-        stateVariable.functionSelector ? ` (0x${stateVariable.functionSelector})` : ""
-      }`;
-
-      const stateVariableWithParsedData: VariableDeclarationWithDocumentation = {
-        ...stateVariable,
-        fullSign: this.parseFullStateVariableSign(stateVariable),
-        title: stateVariableHeader,
-        natSpecDocumentation: this.parseNatSpecDocumentation(stateVariable),
-      };
-
-      stateVariables.push(stateVariableWithParsedData);
+  parseFullSign(node: any): string {
+    if (node.nodeType === "FunctionDefinition") {
+      return this.parseFullFunctionSign(node);
     }
-
-    return stateVariables;
+    if (node.nodeType === "VariableDeclaration") {
+      return this.parseFullStateVariableSign(node);
+    }
+    if (node.nodeType === "EventDefinition") {
+      return this.parseFullEventSign(node);
+    }
+    if (node.nodeType === "ErrorDefinition") {
+      return this.parseFullErrorSign(node);
+    }
+    if (node.nodeType === "EnumDefinition") {
+      return this.parseFullEnumSign(node);
+    }
+    if (node.nodeType === "StructDefinition") {
+      return this.parseFullStructSign(node);
+    }
+    if (node.nodeType === "ModifierDefinition") {
+      return this.parseFullModifierSign(node);
+    }
+    if (node.nodeType === "UsingForDirective") {
+      return this.parseFullUsingForDirectiveSign(node);
+    }
+    if (node.nodeType === "ContractDefinition") {
+      return this.parseFullContractSign(node);
+    }
+    //TODO: error
+    return "";
   }
 
-  parseEvents(contractDefinition: ContractDefinition): EventDefinitionWithDocumentation[] {
-    const eventGenerator = findAll("EventDefinition", contractDefinition);
-
-    const events: EventDefinitionWithDocumentation[] = [];
-    for (const event of eventGenerator) {
-      const eventWithParsedData: EventDefinitionWithDocumentation = {
-        ...event,
-        fullSign: this.parseFullEventSign(event),
-        title: event.name,
-        natSpecDocumentation: this.parseNatSpecDocumentation(event),
-      };
-
-      events.push(eventWithParsedData);
-    }
-
-    return events;
-  }
-
-  parseErrors(contractDefinition: ContractDefinition): ErrorDefinitionWithDocumentation[] {
-    const errorGenerator = findAll("ErrorDefinition", contractDefinition);
-
-    const errors: ErrorDefinitionWithDocumentation[] = [];
-    for (const error of errorGenerator) {
-      const errorWithParsedData: ErrorDefinitionWithDocumentation = {
-        ...error,
-        fullSign: this.parseFullErrorSign(error),
-        title: error.name,
-        natSpecDocumentation: this.parseNatSpecDocumentation(error),
-      };
-
-      errors.push(errorWithParsedData);
-    }
-
-    return errors;
-  }
-
-  parseEnums(contractDefinition: ContractDefinition): EnumDefinitionWithDocumentation[] {
-    const enumGenerator = findAll("EnumDefinition", contractDefinition);
-
-    const enums: EnumDefinitionWithDocumentation[] = [];
-    for (const enumDefinition of enumGenerator) {
-      const enumDefinitionWithParsedData: EnumDefinitionWithDocumentation = {
-        ...enumDefinition,
-        fullSign: this.parseFullEnumSign(enumDefinition),
-        title: enumDefinition.name,
-        natSpecDocumentation: this.parseNatSpecDocumentation(enumDefinition),
-      };
-
-      enums.push(enumDefinitionWithParsedData);
-    }
-
-    return enums;
-  }
-
-  parseStructs(contractDefinition: ContractDefinition): StructDefinitionWithDocumentation[] {
-    const structGenerator = findAll("StructDefinition", contractDefinition);
-
-    const structs: StructDefinitionWithDocumentation[] = [];
-    for (const struct of structGenerator) {
-      const structWithParsedData: StructDefinitionWithDocumentation = {
-        ...struct,
-        fullSign: this.parseFullStructSign(struct),
-        title: struct.name,
-        natSpecDocumentation: this.parseNatSpecDocumentation(struct),
-      };
-
-      structs.push(structWithParsedData);
-    }
-
-    return structs;
-  }
-
-  parseModifiers(contractDefinition: ContractDefinition): ModifierDefinitionWithDocumentation[] {
-    const modifierGenerator = findAll("ModifierDefinition", contractDefinition);
-
-    const modifiers: ModifierDefinitionWithDocumentation[] = [];
-    for (const modifier of modifierGenerator) {
-      const modifierWithParsedData: ModifierDefinitionWithDocumentation = {
-        ...modifier,
-        fullSign: this.parseFullModifierSign(modifier),
-        title: modifier.name,
-        natSpecDocumentation: this.parseNatSpecDocumentation(modifier),
-      };
-
-      modifiers.push(modifierWithParsedData);
-    }
-
-    return modifiers;
-  }
-
-  parseUsingForDirectives(contractDefinition: ContractDefinition): UsingForDirectiveWithDocumentation[] {
-    const usingForDirectiveGenerator = findAll("UsingForDirective", contractDefinition);
-
-    const usingForDirectives: UsingForDirectiveWithDocumentation[] = [];
-    for (const usingForDirective of usingForDirectiveGenerator) {
-      const usingForDirectiveWithParsedData: UsingForDirectiveWithDocumentation = {
-        ...usingForDirective,
-        fullSign: this.parseFullUsingForDirectiveSign(usingForDirective),
-      };
-
-      usingForDirectives.push(usingForDirectiveWithParsedData);
-    }
-
-    return usingForDirectives;
+  parseDocumentation(nodes: Node[], name: string): DocumentationBlock {
+    return {
+      name: name,
+      documentation: nodes.map((node) => ({
+        fullSign: this.parseFullSign(node),
+        title: this.parseTitle(node),
+        natSpecDocumentation: this.parseNatSpecDocumentation(node),
+      })),
+    };
   }
 
   parseFullFunctionSign(functionDefinition: FunctionDefinition): string {
@@ -384,6 +269,16 @@ class Parser {
     }`;
   }
 
+  parseFullContractSign(contractDefinition: ContractDefinition): string {
+    return `${contractDefinition.abstract ? "abstract " : ""}${contractDefinition.contractKind} ${
+      contractDefinition.name
+    }${
+      contractDefinition.baseContracts.length === 0
+        ? ""
+        : ` is ${contractDefinition.baseContracts.map((x) => x.baseName.name).join(", ")}`
+    }`;
+  }
+
   parseLicense(node: SourceUnit): string {
     return node.license || DEFAULT_LICENSE;
   }
@@ -420,19 +315,8 @@ class Parser {
     return parentNode;
   }
 
-  parseNatSpecDocumentation(
-    baseNode:
-      | any
-      | FunctionDefinitionWithDocumentation
-      | VariableDeclarationWithDocumentation
-      | EventDefinitionWithDocumentation
-      | ErrorDefinitionWithDocumentation
-      | EnumDefinitionWithDocumentation
-      | StructDefinitionWithDocumentation
-      | ModifierDefinitionWithDocumentation
-  ): NatSpecDocumentation {
-    baseNode.natSpecDocumentation ??= {};
-    let natSpec: NatSpecDocumentation = baseNode.natSpecDocumentation;
+  parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
+    const natSpec: NatSpecDocumentation = {};
 
     const nodes = [baseNode];
     for (let i = 0; i < nodes.length; i++) {
@@ -455,7 +339,8 @@ class Parser {
         for (const match of text.matchAll(natSpecRegex)) {
           const [, tag = "notice", text] = match;
           if (tag == "title" && !natSpec.title) {
-            natSpec.title = text;
+            // skip title
+            // natSpec.title = text;
           } else if (tag == "author" && !natSpec.author) {
             natSpec.author = text;
           } else if (tag == "notice" && !natSpec.notice) {

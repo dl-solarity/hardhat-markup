@@ -1,17 +1,4 @@
-import { InheritanceSpecifier } from "solidity-ast";
-import {
-  ContractInfo,
-  Documentation,
-  EnumDefinitionWithDocumentation,
-  ErrorDefinitionWithDocumentation,
-  EventDefinitionWithDocumentation,
-  FunctionDefinitionWithDocumentation,
-  ModifierDefinitionWithDocumentation,
-  NatSpecDocumentation,
-  StructDefinitionWithDocumentation,
-  UsingForDirectiveWithDocumentation,
-  VariableDeclarationWithDocumentation,
-} from "../../parser/types";
+import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types";
 import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE } from "./constants";
 import { MDConstructor } from "./md-constructor";
 
@@ -33,44 +20,19 @@ class MDGenerator {
 
     mdConstructor.addParagraphTag(`License: ${contractInfo.license}`);
 
-    this.generateDocumentationBlock(mdConstructor, contractInfo.baseDescription);
-
-    const baseContracts: InheritanceSpecifier[] = contractInfo.baseContracts;
-    if (baseContracts.length > 0) {
-      mdConstructor.addHeaderTag("Base contracts");
-
-      baseContracts.forEach((baseContract) => {
-        mdConstructor.addParagraphTag(baseContract.baseName.name || "");
-      });
-    }
-
-    this.generateBlockInfo(mdConstructor, contractInfo.usingForDirectives, "Using for directives info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.enums, "Enums info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.structs, "Structs info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.events, "Events info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.errors, "Errors info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.constants, "Constants info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.stateVariables, "State variables info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.modifiers, "Modifiers info");
-
-    this.generateBlockInfo(mdConstructor, contractInfo.functions, "Functions info");
+    contractInfo.documentations.forEach((blockInfos) => {
+      this.generateBlockInfo(mdConstructor, blockInfos);
+    });
 
     return mdConstructor.getContractTagsStr();
   }
 
-  generateBlockInfo(mdConstructor: MDConstructor, blockInfos: Documentation[], header: string) {
-    if (blockInfos.length === 0) return;
+  generateBlockInfo(mdConstructor: MDConstructor, blockInfos: DocumentationBlock) {
+    if (blockInfos.documentation.length === 0) return;
 
-    mdConstructor.addHeaderTag(header);
+    mdConstructor.addHeaderTag(blockInfos.name);
 
-    blockInfos.forEach((blockInfo) => {
+    blockInfos.documentation.forEach((blockInfo) => {
       this.generateBlock(mdConstructor, blockInfo);
     });
 
