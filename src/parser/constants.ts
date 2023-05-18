@@ -1,4 +1,10 @@
-export const FUNCTION_TYPE = "function";
-export const EVENT_TYPE = "event";
-export const ERROR_TYPE = "error";
 export const DEFAULT_LICENSE = "UNLICENSED";
+export const USING_FOR_BLOCK_NAME = "Using for directives info";
+export const ENUMS_BLOCK_NAME = "Enums info";
+export const STRUCTS_BLOCK_NAME = "Structs info";
+export const EVENTS_BLOCK_NAME = "Events info";
+export const ERRORS_BLOCK_NAME = "Errors info";
+export const CONSTANTS_BLOCK_NAME = "Constants info";
+export const STATE_VARIABLES_BLOCK_NAME = "State variables info";
+export const FUNCTIONS_BLOCK_NAME = "Functions info";
+export const MODIFIERS_BLOCK_NAME = "Modifiers info";

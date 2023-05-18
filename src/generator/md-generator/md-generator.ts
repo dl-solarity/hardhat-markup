@@ -30,7 +30,7 @@ class MDGenerator {
   generateBlockInfo(mdConstructor: MDConstructor, blockInfos: DocumentationBlock) {
     if (blockInfos.documentation.length === 0) return;
 
-    mdConstructor.addHeaderTag(blockInfos.name);
+    mdConstructor.addHeaderTag(blockInfos.blockName);
 
     blockInfos.documentation.forEach((blockInfo) => {
       this.generateBlock(mdConstructor, blockInfo);
@@ -40,7 +40,7 @@ class MDGenerator {
   }
 
   generateBlock(mdConstructor: MDConstructor, blockInfo: Documentation) {
-    if (blockInfo.title) mdConstructor.addHeaderTag(blockInfo.title, FUNCTION_NAME_H_SIZE);
+    if (blockInfo.header) mdConstructor.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
 
     if (blockInfo.fullSign) mdConstructor.addCodeTag([blockInfo.fullSign]);
 

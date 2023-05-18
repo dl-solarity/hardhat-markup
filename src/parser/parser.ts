@@ -6,6 +6,7 @@ import {
   EventDefinition,
   FunctionDefinition,
   ModifierDefinition,
+  ModifierInvocation,
   SourceLocation,
   SourceUnit,
   StructDefinition,
@@ -14,7 +15,18 @@ import {
 } from "solidity-ast";
 import { Node } from "solidity-ast/node";
 import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils";
-import { DEFAULT_LICENSE } from "./constants";
+import {
+  CONSTANTS_BLOCK_NAME,
+  DEFAULT_LICENSE,
+  ENUMS_BLOCK_NAME,
+  ERRORS_BLOCK_NAME,
+  EVENTS_BLOCK_NAME,
+  FUNCTIONS_BLOCK_NAME,
+  MODIFIERS_BLOCK_NAME,
+  STATE_VARIABLES_BLOCK_NAME,
+  STRUCTS_BLOCK_NAME,
+  USING_FOR_BLOCK_NAME,
+} from "./constants";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
 
 class Parser {
@@ -42,27 +54,27 @@ class Parser {
       license: this.parseLicense(sourceUnit),
       documentations: [
         this.parseDocumentation([contractNode], ""),
-        this.parseDocumentation([...findAll("UsingForDirective", contractNode)], "Using for directives info"),
-        this.parseDocumentation([...findAll("EnumDefinition", contractNode)], "Enums info"),
-        this.parseDocumentation([...findAll("StructDefinition", contractNode)], "Structs info"),
-        this.parseDocumentation([...findAll("EventDefinition", contractNode)], "Events info"),
-        this.parseDocumentation([...findAll("ErrorDefinition", contractNode)], "Errors info"),
+        this.parseDocumentation([...findAll("UsingForDirective", contractNode)], USING_FOR_BLOCK_NAME),
+        this.parseDocumentation([...findAll("EnumDefinition", contractNode)], ENUMS_BLOCK_NAME),
+        this.parseDocumentation([...findAll("StructDefinition", contractNode)], STRUCTS_BLOCK_NAME),
+        this.parseDocumentation([...findAll("EventDefinition", contractNode)], EVENTS_BLOCK_NAME),
+        this.parseDocumentation([...findAll("ErrorDefinition", contractNode)], ERRORS_BLOCK_NAME),
         this.parseDocumentation(
           [...findAll("VariableDeclaration", contractNode)].filter(
             (node) => node.constant && this.isPublicOrExternal(node)
           ),
-          "Constants info"
+          CONSTANTS_BLOCK_NAME
         ),
         this.parseDocumentation(
           [...findAll("VariableDeclaration", contractNode)].filter(
             (node) => !node.constant && this.isPublicOrExternal(node)
           ),
-          "State variables info"
+          STATE_VARIABLES_BLOCK_NAME
         ),
-        this.parseDocumentation([...findAll("ModifierDefinition", contractNode)], "Modifiers info"),
+        this.parseDocumentation([...findAll("ModifierDefinition", contractNode)], MODIFIERS_BLOCK_NAME),
         this.parseDocumentation(
           [...findAll("FunctionDefinition", contractNode)].filter((node) => this.isPublicOrExternal(node)),
-          "Functions info"
+          FUNCTIONS_BLOCK_NAME
         ),
       ],
     };
@@ -78,114 +90,124 @@ class Parser {
     return node.functionSelector ? ` (0x${node.functionSelector})` : "";
   }
 
-  parseTitle(node: any): string {
-    if (node.nodeType === "FunctionDefinition") {
-      return `${node.name ? node.name : node.kind}${this.parseSelector(node)}`;
+  parseHeader(node: any): string {
+    switch (node.nodeType) {
+      case "FunctionDefinition": {
+        return `${node.name ? node.name : node.kind}${this.parseSelector(node)}`;
+      }
+      case "VariableDeclaration": {
+        return `${node.name}${this.parseSelector(node)}`;
+      }
+      case "ContractDefinition": {
+        return "";
+      }
+      default: {
+        return node.name;
+      }
     }
-    if (node.nodeType === "VariableDeclaration") {
-      return `${node.name}${this.parseSelector(node)}`;
-    }
-    if (node.nodeType === "ContractDefinition") {
-      return "";
-    }
-    return node.name;
   }
 
   parseFullSign(node: any): string {
-    if (node.nodeType === "FunctionDefinition") {
-      return this.parseFullFunctionSign(node);
+    switch (node.nodeType) {
+      case "FunctionDefinition": {
+        return this.parseFullFunctionSign(node);
+      }
+      case "VariableDeclaration": {
+        return this.parseFullStateVariableSign(node);
+      }
+      case "EventDefinition": {
+        return this.parseFullEventSign(node);
+      }
+      case "ErrorDefinition": {
+        return this.parseFullErrorSign(node);
+      }
+      case "EnumDefinition": {
+        return this.parseFullEnumSign(node);
+      }
+      case "StructDefinition": {
+        return this.parseFullStructSign(node);
+      }
+      case "ModifierDefinition": {
+        return this.parseFullModifierSign(node);
+      }
+      case "UsingForDirective": {
+        return this.parseFullUsingForDirectiveSign(node);
+      }
+      case "ContractDefinition": {
+        return this.parseFullContractSign(node);
+      }
+      default: {
+        throw new Error(`Unknown node type ${node.nodeType}`);
+      }
     }
-    if (node.nodeType === "VariableDeclaration") {
-      return this.parseFullStateVariableSign(node);
-    }
-    if (node.nodeType === "EventDefinition") {
-      return this.parseFullEventSign(node);
-    }
-    if (node.nodeType === "ErrorDefinition") {
-      return this.parseFullErrorSign(node);
-    }
-    if (node.nodeType === "EnumDefinition") {
-      return this.parseFullEnumSign(node);
-    }
-    if (node.nodeType === "StructDefinition") {
-      return this.parseFullStructSign(node);
-    }
-    if (node.nodeType === "ModifierDefinition") {
-      return this.parseFullModifierSign(node);
-    }
-    if (node.nodeType === "UsingForDirective") {
-      return this.parseFullUsingForDirectiveSign(node);
-    }
-    if (node.nodeType === "ContractDefinition") {
-      return this.parseFullContractSign(node);
-    }
-    //TODO: error
-    return "";
   }
 
   parseDocumentation(nodes: Node[], name: string): DocumentationBlock {
     return {
-      name: name,
+      blockName: name,
       documentation: nodes.map((node) => ({
         fullSign: this.parseFullSign(node),
-        title: this.parseTitle(node),
+        header: this.parseHeader(node),
         natSpecDocumentation: this.parseNatSpecDocumentation(node),
       })),
     };
   }
 
+  buildParameterString(
+    parameters: VariableDeclaration[],
+    delimiter: string = ", ",
+    beginning: string = "",
+    ending: string = ""
+  ): string {
+    return parameters
+      .map(
+        (variableDeclaration) =>
+          `${beginning}${variableDeclaration.typeDescriptions.typeString}${
+            variableDeclaration.storageLocation === "default" ? "" : ` ${variableDeclaration.storageLocation}`
+          }${variableDeclaration.indexed ? " indexed" : ""}${
+            variableDeclaration.name ? ` ${variableDeclaration.name}` : ""
+          }${ending}`
+      )
+      .join(delimiter);
+  }
+
+  parseModifiersString(modifiers: ModifierInvocation[]): string {
+    return modifiers
+      .map(
+        (modifier) =>
+          modifier.modifierName.name +
+          (modifier.arguments
+            ? `(${modifier.arguments
+                .map((expression) => {
+                  if (isNodeType("Identifier", expression)) return expression.name;
+                  if (isNodeType("Literal", expression)) return expression.value;
+                  // TODO: handle other cases
+                  return "";
+                })
+                .join(", ")})`
+            : "")
+      )
+      .join(" ");
+  }
+
   parseFullFunctionSign(functionDefinition: FunctionDefinition): string {
     const kind = functionDefinition.kind;
     const functionName = functionDefinition.name.length === 0 ? "" : ` ${functionDefinition.name}`;
-    const parameters = functionDefinition.parameters.parameters
-      .map(
-        (variableDeclaration) =>
-          variableDeclaration.typeDescriptions.typeString +
-          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
-      )
-      .join(", ");
+    const parameters = this.buildParameterString(functionDefinition.parameters.parameters);
     const visibility = kind === "constructor" ? "" : ` ${functionDefinition.visibility}`;
     const stateMutability =
       functionDefinition.stateMutability === "nonpayable" ? "" : ` ${functionDefinition.stateMutability}`;
     const modifiers =
-      functionDefinition.modifiers.length === 0
-        ? ""
-        : " " +
-          functionDefinition.modifiers
-            .map(
-              (modifier) =>
-                modifier.modifierName.name +
-                (modifier.arguments
-                  ? `(${modifier.arguments
-                      .map((expression) => {
-                        if (isNodeType("Identifier", expression)) return expression.name;
-                        if (isNodeType("Literal", expression)) return expression.value;
-                        // TODO: handle other cases
-                        return "";
-                      })
-                      .join(", ")})`
-                  : "")
-            )
-            .join(" ");
+      functionDefinition.modifiers.length === 0 ? "" : ` ${this.parseModifiersString(functionDefinition.modifiers)}`;
 
     const virtual = functionDefinition.virtual ? " virtual" : "";
     const overrides = functionDefinition.overrides ? " override" : "";
     const returns =
       functionDefinition.returnParameters.parameters.length === 0
         ? ""
-        : " returns (" +
-          functionDefinition.returnParameters.parameters
-            .map(
-              (variableDeclaration) =>
-                `${variableDeclaration.typeDescriptions.typeString}${
-                  variableDeclaration.storageLocation === "default" ? "" : ` ${variableDeclaration.storageLocation}`
-                }${variableDeclaration.name ? ` ${variableDeclaration.name}` : ""}`
-            )
-            .join(", ") +
-          ")";
-    const fullMethodSign: string = `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns}`;
+        : ` returns (${this.buildParameterString(functionDefinition.returnParameters.parameters)})`;
 
-    return fullMethodSign;
+    return `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns}`;
   }
 
   parseStringFromSourceCode(src: SourceLocation): string {
@@ -200,49 +222,36 @@ class Parser {
   }
 
   parseFullStateVariableSign(stateVariable: VariableDeclaration): string {
+    let res = `${stateVariable.typeDescriptions.typeString}${
+      stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
+    } ${stateVariable.name}`;
+
     // TODO: Extract the source code
     // EXPERIMENTAL
     if (stateVariable.value) {
-      return `${stateVariable.typeDescriptions.typeString}${
-        stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
-      } ${stateVariable.name} = ${this.parseStringFromSourceCode(stateVariable.value.src)};`;
+      res += ` = ${this.parseStringFromSourceCode(stateVariable.value.src)}`;
     }
-    return `${stateVariable.typeDescriptions.typeString}${
-      stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
-    } ${stateVariable.name};`;
+
+    return res + ";";
   }
 
   parseFullEventSign(eventDefinition: EventDefinition): string {
-    const parameters = eventDefinition.parameters.parameters
-      .map(
-        (variableDeclaration) =>
-          variableDeclaration.typeDescriptions.typeString +
-          (variableDeclaration.indexed ? " indexed" : "") +
-          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
-      )
-      .join(", ");
-
-    return `event ${eventDefinition.name}(${parameters})${eventDefinition.anonymous ? " anonymous" : ""}`;
+    return `event ${eventDefinition.name}(${this.buildParameterString(eventDefinition.parameters.parameters)})${
+      eventDefinition.anonymous ? " anonymous" : ""
+    }`;
   }
 
   parseFullErrorSign(errorDefinition: ErrorDefinition): string {
-    const parameters = errorDefinition.parameters.parameters
-      .map(
-        (variableDeclaration) =>
-          variableDeclaration.typeDescriptions.typeString +
-          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
-      )
-      .join(", ");
-
-    return `error ${errorDefinition.name}(${parameters})`;
+    return `error ${errorDefinition.name}(${this.buildParameterString(errorDefinition.parameters.parameters)})`;
   }
 
   parseFullStructSign(structDefinition: StructDefinition): string {
-    const parameters = structDefinition.members
-      .map((variableDeclaration) => `\t${variableDeclaration.typeDescriptions.typeString} ${variableDeclaration.name};`)
-      .join("\n");
-
-    return `struct ${structDefinition.name} {\n${parameters}\n}`;
+    return `struct ${structDefinition.name} {\n${this.buildParameterString(
+      structDefinition.members,
+      "\n",
+      "\t",
+      ";"
+    )}\n}`;
   }
 
   parseFullEnumSign(enumDefinition: EnumDefinition): string {
@@ -252,15 +261,9 @@ class Parser {
   }
 
   parseFullModifierSign(modifierDefinition: ModifierDefinition): string {
-    const parameters = modifierDefinition.parameters.parameters
-      .map(
-        (variableDeclaration) =>
-          variableDeclaration.typeDescriptions.typeString +
-          (variableDeclaration.name ? ` ${variableDeclaration.name}` : "")
-      )
-      .join(", ");
-
-    return `modifier ${modifierDefinition.name}(${parameters})`;
+    return `modifier ${modifierDefinition.name}(${this.buildParameterString(
+      modifierDefinition.parameters.parameters
+    )})`;
   }
 
   parseFullUsingForDirectiveSign(usingForDirective: UsingForDirective): string {
@@ -338,111 +341,121 @@ class Parser {
 
         for (const match of text.matchAll(natSpecRegex)) {
           const [, tag = "notice", text] = match;
-          if (tag == "title" && !natSpec.title) {
-            // skip title
-            // natSpec.title = text;
-          } else if (tag == "author" && !natSpec.author) {
-            natSpec.author = text;
-          } else if (tag == "notice" && !natSpec.notice) {
-            natSpec.notice = text;
-          } else if (tag == "dev" && !natSpec.dev) {
-            natSpec.dev = text;
-          } else if (tag == "param") {
-            natSpec.params ??= [];
 
-            const paramRegex = /^(\w+) (.*)$/gm;
-            const matches = paramRegex.exec(text);
-            if (!matches) {
-              // TODO: error
-              continue;
+          switch (tag) {
+            case "title": {
+              break;
             }
-            const [, paramName, paramDescription] = matches;
-
-            // if tag is already defined, skip it
-            if (natSpec.params.find((param) => param.name == paramName)) {
-              continue;
+            case "author": {
+              natSpec.author = natSpec.author ? natSpec.author + "\n" + text : text;
+              break;
             }
-
-            let params: VariableDeclaration[];
-            // if (isNodeType(["EnumDefinition", "StructDefinition"], node)) {
-            if (node.nodeType === "EnumDefinition" || node.nodeType === "StructDefinition") {
-              params = node.members;
-            } else {
-              params = node.parameters.parameters;
+            case "author": {
+              natSpec.author = natSpec.author ? natSpec.author + "\n" + text : text;
+              break;
             }
-
-            const variableDeclaration = params.find((param) => param.name == paramName);
-            if (!variableDeclaration) {
-              // TODO: error
-              continue;
+            case "notice": {
+              natSpec.notice = natSpec.notice ? natSpec.notice + "\n" + text : text;
+              break;
             }
-
-            const type = variableDeclaration.typeDescriptions?.typeString || "";
-
-            natSpec.params.push({ name: paramName, type: type, description: paramDescription });
-          } else if (tag === "return") {
-            natSpec.returns ??= [];
-
-            let currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
-              ? node.returnParameters.parameters[natSpec.returns.length]
-              : node;
-
-            if (!currentParameter) {
-              // TODO: error
-              console.log("error");
-              console.log(node);
-              continue;
+            case "dev": {
+              natSpec.dev = natSpec.dev ? natSpec.dev + "\n" + text : text;
+              break;
             }
+            case "param": {
+              natSpec.params ??= [];
 
-            const currentParameterName = currentParameter.name;
-            const type = currentParameter.typeDescriptions.typeString!;
-
-            // if name is not defined for return parameter
-            if (!currentParameterName) {
-              natSpec.returns.push({ type: type, description: text });
-            } else {
-              const returnRegex = /^(\w+) (.*)$/gm;
-              const matches = returnRegex.exec(text);
-
+              const paramRegex = /^(\w+) (.*)$/gm;
+              const matches = paramRegex.exec(text);
               if (!matches) {
-                // TODO: error
-                console.log("error");
-                console.log(node);
-                continue;
+                throw new Error(`Invalid param tag: ${text}`);
               }
               const [, paramName, paramDescription] = matches;
-              // TODO: check if paramName is equal to currentParameterName
-              natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
+
+              // if tag is already defined, skip it
+              if (natSpec.params.find((param) => param.name == paramName)) {
+                continue;
+              }
+
+              let params: VariableDeclaration[];
+              if (node.nodeType === "EnumDefinition" || node.nodeType === "StructDefinition") {
+                params = node.members;
+              } else {
+                params = node.parameters.parameters;
+              }
+
+              const variableDeclaration = params.find((param) => param.name == paramName);
+              if (!variableDeclaration) {
+                throw new Error(`Invalid param name: ${paramName}`);
+              }
+
+              const type = variableDeclaration.typeDescriptions?.typeString || "";
+
+              natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+              break;
             }
-          } else if (tag.startsWith("custom:")) {
-            const customTag = tag.replace("custom:", "");
-            natSpec.custom ??= {};
-            natSpec.custom[customTag] = text;
-          } else if (tag === "inheritdoc") {
-            const parentNodeRegex = /^(\w+)$/gm;
-            const matches = parentNodeRegex.exec(text);
-            if (!matches) {
-              // TODO: error
-              continue;
+            case "return": {
+              natSpec.returns ??= [];
+
+              let currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
+                ? node.returnParameters.parameters[natSpec.returns.length]
+                : node;
+
+              if (!currentParameter) {
+                throw new Error(`Invalid return tag: ${text}`);
+              }
+
+              const currentParameterName = currentParameter.name;
+              const type = currentParameter.typeDescriptions.typeString!;
+
+              // if name is not defined for return parameter
+              if (!currentParameterName) {
+                natSpec.returns.push({ type: type, description: text });
+              } else {
+                const returnRegex = /^(\w+) (.*)$/gm;
+                const matches = returnRegex.exec(text);
+
+                if (!matches) {
+                  throw new Error(`Invalid return tag: ${text}`);
+                }
+                const [, paramName, paramDescription] = matches;
+                natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
+              }
+              break;
             }
-            const [, parentName] = matches;
-            const parentNode = node.baseFunctions
-              .map((id: number) => this.deref("FunctionDefinition", id))
-              .find(
-                (node: FunctionDefinition) => this.deref("ContractDefinition", node.scope).canonicalName === parentName
-              );
-            if (!parentNode) {
-              // TODO: error
-              continue;
+            case tag.startsWith("custom:") ? tag : "": {
+              const customTag = tag.replace("custom:", "");
+              natSpec.custom ??= {};
+              natSpec.custom[customTag] = text;
+              break;
             }
-            nodes.push(parentNode);
+            case "inheritdoc": {
+              const parentNodeRegex = /^(\w+)$/gm;
+              const matches = parentNodeRegex.exec(text);
+              if (!matches) {
+                throw new Error(`Invalid inheritdoc tag: ${text}`);
+              }
+              const [, parentName] = matches;
+              const parentNode = node.baseFunctions
+                .map((id: number) => this.deref("FunctionDefinition", id))
+                .find(
+                  (node: FunctionDefinition) =>
+                    this.deref("ContractDefinition", node.scope).canonicalName === parentName
+                );
+              if (!parentNode) {
+                throw new Error(`Invalid inheritdoc tag: ${text}`);
+              }
+              nodes.push(parentNode);
+              break;
+            }
+            default: {
+              throw new Error(`Unknown tag: ${tag}`);
+            }
           }
         }
       }
     }
-
     return natSpec;
   }
 }
-
 export { Parser };

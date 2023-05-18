@@ -8,12 +8,12 @@ export interface ContractInfo {
 
 export interface DocumentationBlock {
   documentation: Documentation[];
-  name: string;
+  blockName: string;
 }
 
 export interface Documentation {
   fullSign: string;
-  title?: string;
+  header?: string;
   natSpecDocumentation?: NatSpecDocumentation;
 }
 
