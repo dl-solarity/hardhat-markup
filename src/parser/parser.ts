@@ -286,8 +286,8 @@ class Parser {
     return node.license || DEFAULT_LICENSE;
   }
 
-  deleteComments(text: string): string {
-    const reCommentSymbols = /\/\*[\s\S]*?\*\/|\/\/.*$/gm;
+  extractTextFromComments(text: string): string {
+    const reCommentSymbols = /\/\*[\s\S]*?\*\/|(?:^|[^:])\/\/.*$/gm;
     const reSpaceAtBeginningOfLine = /^[ \t]*[ \t]?/gm;
     return text.replace(reCommentSymbols, "").replace(reSpaceAtBeginningOfLine, "").trim();
   }
@@ -335,8 +335,9 @@ class Parser {
       let sourceText: string = node.documentation.text;
 
       if (sourceText) {
-        const text = this.deleteComments(sourceText);
+        const text = this.extractTextFromComments(sourceText);
 
+        console.log(text);
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
         for (const match of text.matchAll(natSpecRegex)) {
