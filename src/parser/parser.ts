@@ -182,7 +182,8 @@ class Parser {
                   if (isNodeType("Identifier", expression)) return expression.name;
                   if (isNodeType("Literal", expression)) return expression.value;
                   // TODO: handle other cases
-                  return "";
+                  // EXPERIMENTAL
+                  return this.parseStringFromSourceCode(expression.src);
                 })
                 .join(", ")})`
             : "")
@@ -318,6 +319,27 @@ class Parser {
     return parentNode;
   }
 
+  findFunctionDefinitionByContractName(
+    node: FunctionDefinition | VariableDeclaration,
+    contractName: string
+  ): FunctionDefinition | undefined {
+    if (this.deref("ContractDefinition", node.scope).canonicalName === contractName) {
+      return node as FunctionDefinition;
+    }
+
+    if (!node.baseFunctions) {
+      return undefined;
+    }
+
+    for (let i = 0; i < node.baseFunctions.length; i++) {
+      const baseFunction = this.deref("FunctionDefinition", node.baseFunctions[i]);
+      const result = this.findFunctionDefinitionByContractName(baseFunction, contractName);
+      if (result) {
+        return result;
+      }
+    }
+  }
+
   parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
     const natSpec: NatSpecDocumentation = {};
 
@@ -337,7 +359,6 @@ class Parser {
       if (sourceText) {
         const text = this.extractTextFromComments(sourceText);
 
-        console.log(text);
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
         for (const match of text.matchAll(natSpecRegex)) {
@@ -348,19 +369,15 @@ class Parser {
               break;
             }
             case "author": {
-              natSpec.author = natSpec.author ? natSpec.author + "\n" + text : text;
-              break;
-            }
-            case "author": {
-              natSpec.author = natSpec.author ? natSpec.author + "\n" + text : text;
+              if (!natSpec.author) natSpec.author = text;
               break;
             }
             case "notice": {
-              natSpec.notice = natSpec.notice ? natSpec.notice + "\n" + text : text;
+              if (!natSpec.notice) natSpec.notice = text;
               break;
             }
             case "dev": {
-              natSpec.dev = natSpec.dev ? natSpec.dev + "\n" + text : text;
+              if (!natSpec.dev) natSpec.dev = text;
               break;
             }
             case "param": {
@@ -403,7 +420,7 @@ class Parser {
                 : node;
 
               if (!currentParameter) {
-                throw new Error(`Invalid return tag: ${text}`);
+                break;
               }
 
               const currentParameterName = currentParameter.name;
@@ -419,7 +436,13 @@ class Parser {
                 if (!matches) {
                   throw new Error(`Invalid return tag: ${text}`);
                 }
+
                 const [, paramName, paramDescription] = matches;
+
+                if (paramName !== currentParameterName) {
+                  break;
+                }
+
                 natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
               }
               break;
@@ -437,12 +460,7 @@ class Parser {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
               }
               const [, parentName] = matches;
-              const parentNode = node.baseFunctions
-                .map((id: number) => this.deref("FunctionDefinition", id))
-                .find(
-                  (node: FunctionDefinition) =>
-                    this.deref("ContractDefinition", node.scope).canonicalName === parentName
-                );
+              const parentNode = this.findFunctionDefinitionByContractName(node, parentName);
               if (!parentNode) {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
               }
