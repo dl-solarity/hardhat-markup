@@ -40,11 +40,17 @@ class MDGenerator {
   }
 
   generateBlock(mdConstructor: MDConstructor, blockInfo: Documentation) {
-    if (blockInfo.header) mdConstructor.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
+    if (blockInfo.header) {
+      mdConstructor.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
+    }
 
-    if (blockInfo.fullSign) mdConstructor.addCodeTag([blockInfo.fullSign]);
+    if (blockInfo.fullSign) {
+      mdConstructor.addCodeTag([blockInfo.fullSign]);
+    }
 
-    if (blockInfo.natSpecDocumentation) this.generateDocumentationBlock(mdConstructor, blockInfo.natSpecDocumentation);
+    if (blockInfo.natSpecDocumentation) {
+      this.generateDocumentationBlock(mdConstructor, blockInfo.natSpecDocumentation);
+    }
   }
 
   generateDocumentationBlock(mdConstructor: MDConstructor, documentation: NatSpecDocumentation) {

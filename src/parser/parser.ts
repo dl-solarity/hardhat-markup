@@ -44,7 +44,9 @@ class Parser {
     const contractNode: ContractDefinition = sourceUnit.nodes.find(
       (node) => isNodeType("ContractDefinition", node) && node.name === name
     ) as ContractDefinition;
-    if (!contractNode) throw new Error(`Contract ${name} not found in ${source}`);
+    if (!contractNode) {
+      throw new Error(`Contract ${name} not found in ${source}`);
+    }
 
     const contractInfo: ContractInfo = {
       name: contractNode.name,
@@ -190,7 +192,6 @@ class Parser {
                 .map((expression) => {
                   if (isNodeType("Identifier", expression)) return expression.name;
                   if (isNodeType("Literal", expression)) return expression.value;
-                  // TODO: handle other cases
                   // EXPERIMENTAL
                   return this.parseStringFromSourceCode(expression.src);
                 })
@@ -217,8 +218,6 @@ class Parser {
         ? ""
         : ` returns (${this.buildParameterString(functionDefinition.returnParameters.parameters)})`;
 
-    // return `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`;
-
     const formattedRes = this.applyPrettier(
       `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`
     );
@@ -241,7 +240,6 @@ class Parser {
       stateVariable.mutability === "mutable" ? "" : ` ${stateVariable.mutability}`
     } ${stateVariable.name}`;
 
-    // TODO: Extract the source code
     // EXPERIMENTAL
     if (stateVariable.value) {
       res += ` = ${this.parseStringFromSourceCode(stateVariable.value.src)}`;
@@ -358,6 +356,16 @@ class Parser {
     }
   }
 
+  parseNameAndDescription(text: string): [name: string, description: string] {
+    const nameAndDescriptionRegex = /^(\w+)(?: (.+))?$/gm;
+    const matches = nameAndDescriptionRegex.exec(text);
+    if (!matches) {
+      throw new Error(`Invalid name and description: ${text}`);
+    }
+    const [, name, description] = matches;
+    return [name, description];
+  }
+
   parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
     const natSpec: NatSpecDocumentation = {};
 
@@ -403,12 +411,7 @@ class Parser {
             case "param": {
               natSpec.params ??= [];
 
-              const paramRegex = /^(\w+) (.*)$/gm;
-              const matches = paramRegex.exec(text);
-              if (!matches) {
-                throw new Error(`Invalid param tag: ${text}`);
-              }
-              const [, paramName, paramDescription] = matches;
+              const [paramName, paramDescription] = this.parseNameAndDescription(text);
 
               // if tag is already defined, skip it
               if (natSpec.params.find((param) => param.name == paramName)) {
@@ -450,14 +453,7 @@ class Parser {
               if (!currentParameterName) {
                 natSpec.returns.push({ type: type, description: text });
               } else {
-                const returnRegex = /^(\w+) (.*)$/gm;
-                const matches = returnRegex.exec(text);
-
-                if (!matches) {
-                  throw new Error(`Invalid return tag: ${text}`);
-                }
-
-                const [, paramName, paramDescription] = matches;
+                const [paramName, paramDescription] = this.parseNameAndDescription(text);
 
                 if (paramName !== currentParameterName) {
                   break;
