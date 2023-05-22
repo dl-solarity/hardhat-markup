@@ -1,5 +1,4 @@
 export const DEFAULT_LICENSE = "UNLICENSED";
-export const USING_FOR_BLOCK_NAME = "Using for directives info";
 export const ENUMS_BLOCK_NAME = "Enums info";
 export const STRUCTS_BLOCK_NAME = "Structs info";
 export const EVENTS_BLOCK_NAME = "Events info";

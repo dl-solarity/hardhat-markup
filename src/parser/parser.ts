@@ -10,7 +10,6 @@ import {
   SourceLocation,
   SourceUnit,
   StructDefinition,
-  UsingForDirective,
   VariableDeclaration,
 } from "solidity-ast";
 import { Node } from "solidity-ast/node";
@@ -25,7 +24,6 @@ import {
   MODIFIERS_BLOCK_NAME,
   STATE_VARIABLES_BLOCK_NAME,
   STRUCTS_BLOCK_NAME,
-  USING_FOR_BLOCK_NAME,
 } from "./constants";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
 
@@ -54,7 +52,6 @@ class Parser {
       license: this.parseLicense(sourceUnit),
       documentations: [
         this.parseDocumentation([contractNode], ""),
-        this.parseDocumentation([...findAll("UsingForDirective", contractNode)], USING_FOR_BLOCK_NAME),
         this.parseDocumentation([...findAll("EnumDefinition", contractNode)], ENUMS_BLOCK_NAME),
         this.parseDocumentation([...findAll("StructDefinition", contractNode)], STRUCTS_BLOCK_NAME),
         this.parseDocumentation([...findAll("EventDefinition", contractNode)], EVENTS_BLOCK_NAME),
@@ -129,9 +126,6 @@ class Parser {
       }
       case "ModifierDefinition": {
         return this.parseFullModifierSign(node);
-      }
-      case "UsingForDirective": {
-        return this.parseFullUsingForDirectiveSign(node);
       }
       case "ContractDefinition": {
         return this.parseFullContractSign(node);
@@ -265,12 +259,6 @@ class Parser {
     return `modifier ${modifierDefinition.name}(${this.buildParameterString(
       modifierDefinition.parameters.parameters
     )})`;
-  }
-
-  parseFullUsingForDirectiveSign(usingForDirective: UsingForDirective): string {
-    return `using ${usingForDirective.libraryName?.name} for ${
-      usingForDirective.typeName ? usingForDirective.typeName.typeDescriptions.typeString : "*"
-    }`;
   }
 
   parseFullContractSign(contractDefinition: ContractDefinition): string {
