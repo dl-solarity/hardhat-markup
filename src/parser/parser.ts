@@ -26,6 +26,7 @@ import {
   STRUCTS_BLOCK_NAME,
 } from "./constants";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
+const prettier = require("prettier");
 
 class Parser {
   private contractBuildInfo: BuildInfo;
@@ -85,6 +86,10 @@ class Parser {
 
   parseSelector(node: FunctionDefinition | VariableDeclaration): string {
     return node.functionSelector ? ` (0x${node.functionSelector})` : "";
+  }
+
+  applyPrettier(text: string): string {
+    return prettier.format(text, { parser: "solidity-parse" }).trim();
   }
 
   parseHeader(node: any): string {
@@ -147,6 +152,17 @@ class Parser {
     };
   }
 
+  removeTypePrefix(typeString: string): string {
+    if (typeString.includes("enum ")) {
+      return typeString.replace("enum ", "");
+    } else if (typeString.includes("struct ")) {
+      return typeString.replace("struct ", "");
+    } else if (typeString.includes("contract ")) {
+      return typeString.replace("contract ", "");
+    }
+    return typeString;
+  }
+
   buildParameterString(
     parameters: VariableDeclaration[],
     delimiter: string = ", ",
@@ -154,14 +170,13 @@ class Parser {
     ending: string = ""
   ): string {
     return parameters
-      .map(
-        (variableDeclaration) =>
-          `${beginning}${variableDeclaration.typeDescriptions.typeString}${
-            variableDeclaration.storageLocation === "default" ? "" : ` ${variableDeclaration.storageLocation}`
-          }${variableDeclaration.indexed ? " indexed" : ""}${
-            variableDeclaration.name ? ` ${variableDeclaration.name}` : ""
-          }${ending}`
-      )
+      .map((variableDeclaration) => {
+        return `${beginning}${this.removeTypePrefix(variableDeclaration.typeDescriptions.typeString || "")}${
+          variableDeclaration.storageLocation === "default" ? "" : ` ${variableDeclaration.storageLocation}`
+        }${variableDeclaration.indexed ? " indexed" : ""}${
+          variableDeclaration.name ? ` ${variableDeclaration.name}` : ""
+        }${ending}`;
+      })
       .join(delimiter);
   }
 
@@ -202,7 +217,12 @@ class Parser {
         ? ""
         : ` returns (${this.buildParameterString(functionDefinition.returnParameters.parameters)})`;
 
-    return `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns}`;
+    // return `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`;
+
+    const formattedRes = this.applyPrettier(
+      `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`
+    );
+    return formattedRes.substring(0, formattedRes.length - 1);
   }
 
   parseStringFromSourceCode(src: SourceLocation): string {
