@@ -1,13 +1,13 @@
 const Generator = require("./generator/generator");
 
-import { TASK_COMPILE, TASK_CLEAN } from "hardhat/builtin-tasks/task-names";
+import { TASK_CLEAN, TASK_COMPILE } from "hardhat/builtin-tasks/task-names";
 import { extendConfig, task, types } from "hardhat/config";
 import { NomicLabsHardhatPluginError } from "hardhat/plugins";
 
-import "./type-extensions";
-import { getDefaultMarkupConfig } from "./config";
-import { TASK_MARKUP, pluginName } from "./constants";
 import { ActionType } from "hardhat/types";
+import { getDefaultMarkupConfig } from "./config";
+import { pluginName, TASK_MARKUP } from "./constants";
+import "./type-extensions";
 
 interface MarkupArgs {
   outdir?: string;

@@ -190,8 +190,6 @@ class Parser {
           (modifier.arguments
             ? `(${modifier.arguments
                 .map((expression) => {
-                  if (isNodeType("Identifier", expression)) return expression.name;
-                  if (isNodeType("Literal", expression)) return expression.value;
                   // EXPERIMENTAL
                   return this.parseStringFromSourceCode(expression.src);
                 })
@@ -301,12 +299,8 @@ class Parser {
       .trim();
   }
 
-  replaceSimpleNewLineWithSpace(text: string): string {
-    return text.replace(/(?<!\n)\n(?!\n)/g, " ");
-  }
-
   replaceMultipleNewLinesWithOne(text: string): string {
-    return text.replace(/\n{2,}/g, "\n");
+    return text.replace(/\n{3,}/g, "\n");
   }
 
   getValidParentNodeToInheritDocumentation(
@@ -390,7 +384,7 @@ class Parser {
         for (const match of text.matchAll(natSpecRegex)) {
           const [, tag = "notice", rawText] = match;
 
-          const text = this.replaceMultipleNewLinesWithOne(this.replaceSimpleNewLineWithSpace(rawText));
+          const text = this.replaceMultipleNewLinesWithOne(rawText);
 
           switch (tag) {
             case "title": {

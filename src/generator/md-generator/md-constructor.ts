@@ -13,6 +13,10 @@ class MDConstructor {
     this.contractTags.push(this.createHeaderTag(headerContent, headerSize));
   }
 
+  addPlainText(plainTextContent: string) {
+    this.contractTags.push(plainTextContent);
+  }
+
   addParagraphTag(pContent: string) {
     this.contractTags.push(this.createParagraphTag(pContent));
   }

@@ -65,7 +65,7 @@ class MDGenerator {
       res.push(documentation.notice);
     }
     if (documentation.dev) {
-      res.push(`_${documentation.dev.trim().split("\n").join("_\n_")}_`);
+      res.push(documentation.dev);
     }
     if (documentation.custom) {
       for (const key of Object.keys(documentation.custom)) {
@@ -73,7 +73,7 @@ class MDGenerator {
       }
     }
 
-    mdConstructor.addParagraphTag(res.join("\n"));
+    mdConstructor.addPlainText(res.join("\n"));
 
     if (documentation.params) {
       mdConstructor.addParagraphTag("Parameters:");
