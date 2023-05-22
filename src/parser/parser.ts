@@ -395,7 +395,7 @@ class Parser {
                 throw new Error(`Invalid param name: ${paramName}`);
               }
 
-              const type = variableDeclaration.typeDescriptions?.typeString || "";
+              const type = variableDeclaration.typeDescriptions?.typeString || undefined;
 
               natSpec.params.push({ name: paramName, type: type, description: paramDescription });
               break;

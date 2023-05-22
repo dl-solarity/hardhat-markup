@@ -72,7 +72,11 @@ class MDGenerator {
     if (documentation.params) {
       mdConstructor.addParagraphTag("Parameters:");
 
-      this.generateElementsBlock(mdConstructor, documentation.params);
+      if (documentation.params.every((param) => param.type === undefined)) {
+        this.generateEnumElementsBlock(mdConstructor, documentation.params);
+      } else {
+        this.generateElementsBlock(mdConstructor, documentation.params);
+      }
     }
     if (documentation.returns) {
       mdConstructor.addParagraphTag("Return values:");
@@ -99,7 +103,7 @@ class MDGenerator {
     mdConstructor.addTableTag(["Name", "Type", "Description"], raws);
   }
 
-  generateEnumDocumentationBlock(
+  generateEnumElementsBlock(
     mdConstructor: MDConstructor,
     documentation: {
       name?: string;
