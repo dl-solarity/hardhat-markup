@@ -275,10 +275,20 @@ class Parser {
     return node.license || DEFAULT_LICENSE;
   }
 
-  extractTextFromComments(text: string): string {
-    const reCommentSymbols = /\/\*[\s\S]*?\*\/|(?:^|[^:])\/\/.*$/gm;
-    const reSpaceAtBeginningOfLine = /^[ \t]*[ \t]?/gm;
-    return text.replace(reCommentSymbols, "").replace(reSpaceAtBeginningOfLine, "").trim();
+  deleteCommentSymbols(text: string): string {
+    return text
+      .replace(/^\/\*\*([\s\S]*?)\*\/$/m, "$1")
+      .trim()
+      .replace(/^[ \t]*((\*{1,2}|\/{2,3})[ \t]?)+/gm, "")
+      .trim();
+  }
+
+  replaceSimpleNewLineWithSpace(text: string): string {
+    return text.replace(/(?<!\n)\n(?!\n)/g, " ");
+  }
+
+  replaceMultipleNewLinesWithOne(text: string): string {
+    return text.replace(/\n{2,}/g, "\n");
   }
 
   getValidParentNodeToInheritDocumentation(
@@ -342,15 +352,17 @@ class Parser {
         continue;
       }
 
-      let sourceText: string = node.documentation.text;
+      let sourceText: string = this.parseStringFromSourceCode(node.documentation.src);
 
       if (sourceText) {
-        const text = this.extractTextFromComments(sourceText);
+        const text = this.deleteCommentSymbols(sourceText);
 
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
         for (const match of text.matchAll(natSpecRegex)) {
-          const [, tag = "notice", text] = match;
+          const [, tag = "notice", rawText] = match;
+
+          const text = this.replaceMultipleNewLinesWithOne(this.replaceSimpleNewLineWithSpace(rawText));
 
           switch (tag) {
             case "title": {
