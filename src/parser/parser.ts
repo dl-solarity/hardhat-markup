@@ -227,7 +227,7 @@ class Parser {
       res += ` = ${this.parseStringFromSourceCode(stateVariable.value.src)}`;
     }
 
-    return res + ";";
+    return res;
   }
 
   parseFullEventSign(eventDefinition: EventDefinition): string {
