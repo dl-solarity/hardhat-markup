@@ -295,7 +295,7 @@ class Parser {
     return text
       .replace(/^\/\*\*([\s\S]*?)\*\/$/m, "$1")
       .trim()
-      .replace(/^[ \t]*((\*{1,2}|\/{2,3})[ \t]?)+/gm, "")
+      .replace(/^[ \t]*((\*{1,2}|\/{2,3})[ \t]*)+/gm, "")
       .trim();
   }
 
@@ -360,6 +360,10 @@ class Parser {
     return [name, description];
   }
 
+  joinDescriptionLines(text: string): string {
+    return text.replace(/\n/g, "; ");
+  }
+
   parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
     const natSpec: NatSpecDocumentation = {};
 
@@ -378,6 +382,10 @@ class Parser {
 
       if (sourceText) {
         const text = this.deleteCommentSymbols(sourceText);
+
+        if (baseNode.name === "my_enum") {
+          console.log(text);
+        }
 
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
@@ -405,7 +413,9 @@ class Parser {
             case "param": {
               natSpec.params ??= [];
 
-              const [paramName, paramDescription] = this.parseNameAndDescription(text);
+              const [paramName, paramDescriptionRaw] = this.parseNameAndDescription(text);
+
+              const paramDescription = this.joinDescriptionLines(paramDescriptionRaw);
 
               // if tag is already defined, skip it
               if (natSpec.params.find((param) => param.name == paramName)) {
@@ -445,9 +455,11 @@ class Parser {
 
               // if name is not defined for return parameter
               if (!currentParameterName) {
-                natSpec.returns.push({ type: type, description: text });
+                natSpec.returns.push({ type: type, description: this.joinDescriptionLines(text) });
               } else {
-                const [paramName, paramDescription] = this.parseNameAndDescription(text);
+                const [paramName, paramDescriptionRaw] = this.parseNameAndDescription(text);
+
+                const paramDescription = this.joinDescriptionLines(paramDescriptionRaw);
 
                 if (paramName !== currentParameterName) {
                   break;
