@@ -28,7 +28,7 @@ import {
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
 import prettier = require("prettier");
 
-class Parser {
+export class Parser {
   private contractBuildInfo: BuildInfo;
   private deref: ASTDereferencer;
 
@@ -366,8 +366,8 @@ class Parser {
 
   parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
     const natSpec: NatSpecDocumentation = {};
-
     const nodes = [baseNode];
+
     for (let i = 0; i < nodes.length; i++) {
       let node = nodes[i];
       if (!node.documentation) {
@@ -492,7 +492,7 @@ class Parser {
         }
       }
     }
+
     return natSpec;
   }
 }
-export { Parser };

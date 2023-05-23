@@ -1,5 +1,4 @@
 import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants";
-
 import json2md = require("json2md");
 
 export class MDFactory {

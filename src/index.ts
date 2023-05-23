@@ -1,4 +1,4 @@
-const Generator = require("./generator/generator");
+import { Generator } from "./generator/Generator";
 
 import { TASK_CLEAN, TASK_COMPILE } from "hardhat/builtin-tasks/task-names";
 import { extendConfig, task, types } from "hardhat/config";

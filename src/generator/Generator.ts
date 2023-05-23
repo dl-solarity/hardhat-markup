@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
 
-module.exports = class Generator {
+export class Generator {
   private artifacts: Artifacts;
   private outDir: string;
   private onlyFiles: string[];
@@ -97,4 +97,4 @@ module.exports = class Generator {
       console.log(msg);
     }
   }
-};
+}
