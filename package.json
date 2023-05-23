@@ -40,6 +40,7 @@
     "hardhat": "^2.10.0"
   },
   "devDependencies": {
+    "@types/json2md": "^1.5.1",
     "@types/prettier": "^2.7.2",
     "hardhat": "^2.10.0",
     "husky": "^7.0.2",

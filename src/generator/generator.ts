@@ -1,5 +1,5 @@
 import { Artifacts, HardhatRuntimeEnvironment } from "hardhat/types";
-import { Parser } from "../parser/parser";
+import { Parser } from "../parser/Parser";
 import { ContractInfo } from "../parser/types";
 import { MDGenerator } from "./md-generator/MDGenerator";
 
