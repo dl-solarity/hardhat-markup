@@ -1,8 +1,8 @@
 import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants";
 
-const json2md = require("json2md");
+import json2md = require("json2md");
 
-class MDConstructor {
+export class MDFactory {
   private contractTags: any[];
 
   constructor() {
@@ -11,6 +11,10 @@ class MDConstructor {
 
   addHeaderTag(headerContent: string, headerSize: number | string = TOPIC_H_SIZE) {
     this.contractTags.push(this.createHeaderTag(headerContent, headerSize));
+  }
+
+  addPlainText(plainTextContent: string) {
+    this.contractTags.push(plainTextContent);
   }
 
   addParagraphTag(pContent: string) {
@@ -108,5 +112,3 @@ class MDConstructor {
     };
   }
 }
-
-export { MDConstructor };
