@@ -1,7 +1,7 @@
 import { Artifacts, HardhatRuntimeEnvironment } from "hardhat/types";
 import { Parser } from "../parser/parser";
 import { ContractInfo } from "../parser/types";
-import { MDGenerator } from "./md-generator/md-generator";
+import { MDGenerator } from "./md-generator/MDGenerator";
 
 const path = require("path");
 const fs = require("fs");

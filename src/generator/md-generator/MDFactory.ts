@@ -2,7 +2,7 @@ import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } 
 
 const json2md = require("json2md");
 
-class MDConstructor {
+export class MDFactory {
   private contractTags: any[];
 
   constructor() {
@@ -112,5 +112,3 @@ class MDConstructor {
     };
   }
 }
-
-export { MDConstructor };

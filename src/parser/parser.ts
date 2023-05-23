@@ -26,7 +26,7 @@ import {
   STRUCTS_BLOCK_NAME,
 } from "./constants";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
-const prettier = require("prettier");
+import prettier = require("prettier");
 
 class Parser {
   private contractBuildInfo: BuildInfo;
@@ -382,10 +382,6 @@ class Parser {
 
       if (sourceText) {
         const text = this.deleteCommentSymbols(sourceText);
-
-        if (baseNode.name === "my_enum") {
-          console.log(text);
-        }
 
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 

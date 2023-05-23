@@ -1,59 +1,59 @@
 import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types";
 import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE } from "./constants";
-import { MDConstructor } from "./md-constructor";
+import { MDFactory } from "./MDFactory";
 
-class MDGenerator {
+export class MDGenerator {
   capitalizeFirstLetter(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
   generateContractMDStr(contractInfo: ContractInfo): string {
-    const mdConstructor: MDConstructor = new MDConstructor();
+    const mdFactory: MDFactory = new MDFactory();
 
-    mdConstructor.addHeaderTag(contractInfo.name, CONTRACT_NAME_H_SIZE);
+    mdFactory.addHeaderTag(contractInfo.name, CONTRACT_NAME_H_SIZE);
 
-    mdConstructor.addHeaderTag(
+    mdFactory.addHeaderTag(
       `${contractInfo.isAbstract ? "Abstract " : ""}${this.capitalizeFirstLetter(
         contractInfo.contractKind
       )} Description`
     );
 
-    mdConstructor.addParagraphTag(`License: ${contractInfo.license}`);
+    mdFactory.addParagraphTag(`License: ${contractInfo.license}`);
 
     contractInfo.documentations.forEach((blockInfos) => {
-      this.generateBlockInfo(mdConstructor, blockInfos);
+      this.generateBlockInfo(mdFactory, blockInfos);
     });
 
-    return mdConstructor.getContractTagsStr();
+    return mdFactory.getContractTagsStr();
   }
 
-  generateBlockInfo(mdConstructor: MDConstructor, blockInfos: DocumentationBlock) {
+  generateBlockInfo(mdFactory: MDFactory, blockInfos: DocumentationBlock) {
     if (blockInfos.documentation.length === 0) return;
 
-    mdConstructor.addHeaderTag(blockInfos.blockName);
+    mdFactory.addHeaderTag(blockInfos.blockName);
 
     blockInfos.documentation.forEach((blockInfo) => {
-      this.generateBlock(mdConstructor, blockInfo);
+      this.generateBlock(mdFactory, blockInfo);
     });
 
-    return mdConstructor.getContractTagsStr();
+    return mdFactory.getContractTagsStr();
   }
 
-  generateBlock(mdConstructor: MDConstructor, blockInfo: Documentation) {
+  generateBlock(mdFactory: MDFactory, blockInfo: Documentation) {
     if (blockInfo.header) {
-      mdConstructor.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
+      mdFactory.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
     }
 
     if (blockInfo.fullSign) {
-      mdConstructor.addCodeTag([blockInfo.fullSign]);
+      mdFactory.addCodeTag([blockInfo.fullSign]);
     }
 
     if (blockInfo.natSpecDocumentation) {
-      this.generateDocumentationBlock(mdConstructor, blockInfo.natSpecDocumentation);
+      this.generateDocumentationBlock(mdFactory, blockInfo.natSpecDocumentation);
     }
   }
 
-  generateDocumentationBlock(mdConstructor: MDConstructor, documentation: NatSpecDocumentation) {
+  generateDocumentationBlock(mdFactory: MDFactory, documentation: NatSpecDocumentation) {
     const res = [];
     if (documentation.author) {
       res.push(`Author: ${documentation.author}`);
@@ -73,26 +73,26 @@ class MDGenerator {
       }
     }
 
-    mdConstructor.addPlainText(res.join("\n"));
+    mdFactory.addPlainText(res.join("\n"));
 
     if (documentation.params) {
-      mdConstructor.addParagraphTag("Parameters:");
+      mdFactory.addParagraphTag("Parameters:");
 
       if (documentation.params.every((param) => param.type === undefined)) {
-        this.generateEnumElementsBlock(mdConstructor, documentation.params);
+        this.generateEnumElementsBlock(mdFactory, documentation.params);
       } else {
-        this.generateElementsBlock(mdConstructor, documentation.params);
+        this.generateElementsBlock(mdFactory, documentation.params);
       }
     }
     if (documentation.returns) {
-      mdConstructor.addParagraphTag("Return values:");
+      mdFactory.addParagraphTag("Return values:");
 
-      this.generateElementsBlock(mdConstructor, documentation.returns);
+      this.generateElementsBlock(mdFactory, documentation.returns);
     }
   }
 
   generateElementsBlock(
-    mdConstructor: MDConstructor,
+    mdFactory: MDFactory,
     documentation: {
       name?: string;
       type?: string;
@@ -106,11 +106,11 @@ class MDGenerator {
       raws.push([element.name ? element.name : `[${i}]`, element.type || "", element.description]);
     }
 
-    mdConstructor.addTableTag(["Name", "Type", "Description"], raws);
+    mdFactory.addTableTag(["Name", "Type", "Description"], raws);
   }
 
   generateEnumElementsBlock(
-    mdConstructor: MDConstructor,
+    mdFactory: MDFactory,
     documentation: {
       name?: string;
       type?: string;
@@ -124,8 +124,6 @@ class MDGenerator {
       raws.push([element.name ? element.name : `[${i}]`, element.description]);
     }
 
-    mdConstructor.addTableTag(["Name", "Description"], raws);
+    mdFactory.addTableTag(["Name", "Description"], raws);
   }
 }
-
-export { MDGenerator };
