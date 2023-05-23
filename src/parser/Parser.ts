@@ -361,7 +361,7 @@ class Parser {
   }
 
   joinDescriptionLines(text: string): string {
-    return text.replace(/\n/g, "; ");
+    return text.replace(/\n/g, " ");
   }
 
   parseNatSpecDocumentation(baseNode: any): NatSpecDocumentation {
