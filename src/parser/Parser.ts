@@ -40,10 +40,10 @@ export class Parser {
 
   parseContractInfo(source: string, name: string): ContractInfo {
     const sourceUnit: SourceUnit = this.contractBuildInfo.output.sources[source].ast;
-
     const contractNode: ContractDefinition = sourceUnit.nodes.find(
       (node) => isNodeType("ContractDefinition", node) && node.name === name
     ) as ContractDefinition;
+
     if (!contractNode) {
       throw new Error(`Contract ${name} not found in ${source}`);
     }
@@ -162,6 +162,7 @@ export class Parser {
     } else if (typeString.includes("contract ")) {
       return typeString.replace("contract ", "");
     }
+
     return typeString;
   }
 
@@ -219,6 +220,7 @@ export class Parser {
     const formattedRes = this.applyPrettier(
       `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`
     );
+
     return formattedRes.substring(0, formattedRes.length - 1);
   }
 
@@ -344,6 +346,7 @@ export class Parser {
     for (let i = 0; i < node.baseFunctions.length; i++) {
       const baseFunction = this.deref("FunctionDefinition", node.baseFunctions[i]);
       const result = this.findFunctionDefinitionByContractName(baseFunction, contractName);
+
       if (result) {
         return result;
       }
@@ -351,12 +354,15 @@ export class Parser {
   }
 
   parseNameAndDescription(text: string): [name: string, description: string] {
-    const nameAndDescriptionRegex = /^(\w+)(?: (.+))?$/gm;
+    const nameAndDescriptionRegex = /^(\w+).? ([\s\S]*)?/gm;
     const matches = nameAndDescriptionRegex.exec(text);
+
     if (!matches) {
       throw new Error(`Invalid name and description: ${text}`);
     }
+
     const [, name, description] = matches;
+
     return [name, description];
   }
 
@@ -370,11 +376,14 @@ export class Parser {
 
     for (let i = 0; i < nodes.length; i++) {
       let node = nodes[i];
+
       if (!node.documentation) {
         const parentNode = this.getValidParentNodeToInheritDocumentation(node);
+
         if (parentNode) {
           nodes.push(parentNode);
         }
+
         continue;
       }
 
@@ -387,7 +396,6 @@ export class Parser {
 
         for (const match of text.matchAll(natSpecRegex)) {
           const [, tag = "notice", rawText] = match;
-
           const text = this.replaceMultipleNewLinesWithOne(rawText);
 
           switch (tag) {
@@ -395,22 +403,30 @@ export class Parser {
               break;
             }
             case "author": {
-              if (!natSpec.author) natSpec.author = text;
+              if (!natSpec.author) {
+                natSpec.author = text;
+              }
+
               break;
             }
             case "notice": {
-              if (!natSpec.notice) natSpec.notice = text;
+              if (!natSpec.notice) {
+                natSpec.notice = text;
+              }
+
               break;
             }
             case "dev": {
-              if (!natSpec.dev) natSpec.dev = text;
+              if (!natSpec.dev) {
+                natSpec.dev = text;
+              }
+
               break;
             }
             case "param": {
               natSpec.params ??= [];
 
               const [paramName, paramDescriptionRaw] = this.parseNameAndDescription(text);
-
               const paramDescription = this.joinDescriptionLines(paramDescriptionRaw);
 
               // if tag is already defined, skip it
@@ -419,6 +435,7 @@ export class Parser {
               }
 
               let params: VariableDeclaration[];
+
               if (node.nodeType === "EnumDefinition" || node.nodeType === "StructDefinition") {
                 params = node.members;
               } else {
@@ -426,6 +443,7 @@ export class Parser {
               }
 
               const variableDeclaration = params.find((param) => param.name == paramName);
+
               if (!variableDeclaration) {
                 throw new Error(`Invalid param name: ${paramName}`);
               }
@@ -433,6 +451,7 @@ export class Parser {
               const type = variableDeclaration.typeDescriptions?.typeString || undefined;
 
               natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+
               break;
             }
             case "return": {
@@ -454,7 +473,6 @@ export class Parser {
                 natSpec.returns.push({ type: type, description: this.joinDescriptionLines(text) });
               } else {
                 const [paramName, paramDescriptionRaw] = this.parseNameAndDescription(text);
-
                 const paramDescription = this.joinDescriptionLines(paramDescriptionRaw);
 
                 if (paramName !== currentParameterName) {
@@ -463,26 +481,34 @@ export class Parser {
 
                 natSpec.returns.push({ name: paramName, type: type, description: paramDescription });
               }
+
               break;
             }
             case tag.startsWith("custom:") ? tag : "": {
               const customTag = tag.replace("custom:", "");
+
               natSpec.custom ??= {};
               natSpec.custom[customTag] = text;
+
               break;
             }
             case "inheritdoc": {
               const parentNodeRegex = /^(\w+)$/gm;
               const matches = parentNodeRegex.exec(text);
+
               if (!matches) {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
               }
+
               const [, parentName] = matches;
               const parentNode = this.findFunctionDefinitionByContractName(node, parentName);
+
               if (!parentNode) {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
               }
+
               nodes.push(parentNode);
+
               break;
             }
             default: {

@@ -11,13 +11,11 @@ export class MDGenerator {
     const mdFactory: MDFactory = new MDFactory();
 
     mdFactory.addHeaderTag(contractInfo.name, CONTRACT_NAME_H_SIZE);
-
     mdFactory.addHeaderTag(
       `${contractInfo.isAbstract ? "Abstract " : ""}${this.capitalizeFirstLetter(
         contractInfo.contractKind
       )} Description`
     );
-
     mdFactory.addParagraphTag(`License: ${contractInfo.license}`);
 
     contractInfo.documentations.forEach((blockInfos) => {
@@ -55,18 +53,23 @@ export class MDGenerator {
 
   generateDocumentationBlock(mdFactory: MDFactory, documentation: NatSpecDocumentation) {
     const res = [];
+
     if (documentation.author) {
       res.push(`Author: ${documentation.author}`);
     }
+
     if (documentation.title) {
       res.push(documentation.title);
     }
+
     if (documentation.notice) {
       res.push(documentation.notice);
     }
+
     if (documentation.dev) {
       res.push(documentation.dev);
     }
+
     if (documentation.custom) {
       for (const key of Object.keys(documentation.custom)) {
         res.push(`${key}: ${documentation.custom[key]}`);
@@ -84,6 +87,7 @@ export class MDGenerator {
         this.generateElementsBlock(mdFactory, documentation.params);
       }
     }
+
     if (documentation.returns) {
       mdFactory.addParagraphTag("Return values:");
 
