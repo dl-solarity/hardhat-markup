@@ -48,6 +48,14 @@ export class Parser {
       throw new Error(`Contract ${name} not found in ${source}`);
     }
 
+    const allFunctions: FunctionDefinition[] = [...findAll("FunctionDefinition", contractNode)];
+    let functions: FunctionDefinition[];
+    if (contractNode.contractKind === "library" && allFunctions.every((fn) => fn.visibility === "internal")) {
+      functions = allFunctions.filter((node) => this.isPublicOrExternalOrInternal(node));
+    } else {
+      functions = allFunctions.filter((node) => this.isPublicOrExternal(node));
+    }
+
     const contractInfo: ContractInfo = {
       name: contractNode.name,
       isAbstract: contractNode.abstract,
@@ -72,10 +80,7 @@ export class Parser {
           STATE_VARIABLES_BLOCK_NAME
         ),
         this.parseDocumentation([...findAll("ModifierDefinition", contractNode)], MODIFIERS_BLOCK_NAME),
-        this.parseDocumentation(
-          [...findAll("FunctionDefinition", contractNode)].filter((node) => this.isPublicOrExternal(node)),
-          FUNCTIONS_BLOCK_NAME
-        ),
+        this.parseDocumentation(functions, FUNCTIONS_BLOCK_NAME),
       ],
     };
 
@@ -84,6 +89,10 @@ export class Parser {
 
   isPublicOrExternal(node: FunctionDefinition | VariableDeclaration): boolean {
     return node.visibility === "public" || node.visibility === "external";
+  }
+
+  isPublicOrExternalOrInternal(node: FunctionDefinition | VariableDeclaration): boolean {
+    return this.isPublicOrExternal(node) || node.visibility === "internal";
   }
 
   parseSelector(node: FunctionDefinition | VariableDeclaration): string {
