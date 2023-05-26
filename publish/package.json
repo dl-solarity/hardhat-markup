@@ -1,6 +1,6 @@
 {
   "name": "@dlsl/hardhat-markup",
-  "version": "1.0.0-rc.10",
+  "version": "1.0.0-rc.11",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
