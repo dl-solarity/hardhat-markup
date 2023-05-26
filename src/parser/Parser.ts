@@ -49,9 +49,11 @@ export class Parser {
     }
 
     const allFunctions: FunctionDefinition[] = [...findAll("FunctionDefinition", contractNode)];
+
     let functions: FunctionDefinition[];
-    if (contractNode.contractKind === "library" && allFunctions.every((fn) => fn.visibility === "internal")) {
-      functions = allFunctions.filter((node) => this.isPublicOrExternalOrInternal(node));
+
+    if (contractNode.contractKind === "library" && allFunctions.every((fn) => this.isPrivateOrInternal(fn))) {
+      functions = allFunctions.filter((node) => this.isInternal(node));
     } else {
       functions = allFunctions.filter((node) => this.isPublicOrExternal(node));
     }
@@ -87,12 +89,16 @@ export class Parser {
     return contractInfo;
   }
 
-  isPublicOrExternal(node: FunctionDefinition | VariableDeclaration): boolean {
-    return node.visibility === "public" || node.visibility === "external";
+  isInternal(node: FunctionDefinition | VariableDeclaration): boolean {
+    return node.visibility === "internal";
   }
 
-  isPublicOrExternalOrInternal(node: FunctionDefinition | VariableDeclaration): boolean {
-    return this.isPublicOrExternal(node) || node.visibility === "internal";
+  isPrivateOrInternal(node: FunctionDefinition | VariableDeclaration): boolean {
+    return node.visibility === "private" || this.isInternal(node);
+  }
+
+  isPublicOrExternal(node: FunctionDefinition | VariableDeclaration): boolean {
+    return node.visibility === "public" || node.visibility === "external";
   }
 
   parseSelector(node: FunctionDefinition | VariableDeclaration): string {
