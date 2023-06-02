@@ -19,8 +19,8 @@ export class Generator {
     this.artifacts = hre.artifacts;
     this.outDir = path.resolve(hre.config.markup.outdir);
     this.mdGenerator = new MDGenerator();
-    this.onlyFiles = hre.config.markup.onlyFiles.map((p) => path.normalize(p));
-    this.skipFiles = hre.config.markup.skipFiles.map((p) => path.normalize(p));
+    this.onlyFiles = hre.config.markup.onlyFiles.map((p) => this.toUnixPath(path.normalize(p)));
+    this.skipFiles = hre.config.markup.skipFiles.map((p) => this.toUnixPath(path.normalize(p)));
     this.verbose = hre.config.markup.verbose;
   }
 
@@ -90,6 +90,10 @@ export class Generator {
     };
 
     return pathList === undefined ? false : pathList.some((p: any) => isSubPath(p, source));
+  }
+
+  private toUnixPath(path: string) {
+    return path.replace(/[\\/]+/g, "/");
   }
 
   private verboseLog(msg: string) {
