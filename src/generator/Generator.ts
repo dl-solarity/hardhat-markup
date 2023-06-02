@@ -84,16 +84,16 @@ export class Generator {
 
   private contains(pathList: any, source: any) {
     const isSubPath = (parent: string, child: string) => {
-      const parentTokens = parent.split(path.sep).filter((i) => i.length);
-      const childTokens = child.split(path.sep).filter((i) => i.length);
+      const parentTokens = parent.split(path.posix.sep).filter((i) => i.length);
+      const childTokens = child.split(path.posix.sep).filter((i) => i.length);
       return parentTokens.every((t, i) => childTokens[i] === t);
     };
 
     return pathList === undefined ? false : pathList.some((p: any) => isSubPath(p, source));
   }
 
-  private toUnixPath(path: string) {
-    return path.replace(/[\\/]+/g, "/");
+  private toUnixPath(userPath: string) {
+    return userPath.split(path.sep).join(path.posix.sep);
   }
 
   private verboseLog(msg: string) {
