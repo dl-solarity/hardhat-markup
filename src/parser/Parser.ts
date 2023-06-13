@@ -247,7 +247,9 @@ export class Parser {
         Object.values(this.contractBuildInfo.output.sources).find((source) => source.id === id)?.ast.absolutePath
       ].content;
 
-    return sourceFile.substring(start, start + end);
+    return Buffer.from(sourceFile, "utf-8")
+      .subarray(start, start + end)
+      .toString();
   }
 
   parseFullStateVariableSign(stateVariable: VariableDeclaration): string {
