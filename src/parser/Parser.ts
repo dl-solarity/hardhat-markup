@@ -322,7 +322,7 @@ export class Parser {
           startOfCommentBlock = true;
           return p4;
         }
-
+        
         if (inCommentBlock) {
           if (startOfCommentBlock) {
             spacesToRemove = p3.length;
