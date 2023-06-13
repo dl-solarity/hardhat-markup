@@ -1,6 +1,6 @@
 {
   "name": "@dlsl/hardhat-markup",
-  "version": "1.0.0-rc.12",
+  "version": "1.0.0-rc.13",
   "description": "Customizable markdown smart contracts documentation",
   "scripts": {
     "install": "npx husky install",
