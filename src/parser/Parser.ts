@@ -309,10 +309,31 @@ export class Parser {
   }
 
   deleteCommentSymbols(text: string): string {
+    let inCommentBlock = false;
+    let startOfCommentBlock = false;
+    let spacesToRemove = 0;
+
     return text
       .replace(/^\/\*\*([\s\S]*?)\*\/$/m, "$1")
       .trim()
-      .replace(/^[ \t]*((\*{1,2}|\/{2,3})[ \t]*)+/gm, "")
+      .replace(/^[ \t]*((\*{1,2}|\/{2,3}))+([ \t]*)(.*\n?)/gm, (match, p1, p2, p3, p4) => {
+        if (p4.includes("```")) {
+          inCommentBlock = !inCommentBlock;
+          startOfCommentBlock = true;
+          return p4;
+        }
+
+        if (inCommentBlock) {
+          if (startOfCommentBlock) {
+            spacesToRemove = p3.length;
+            startOfCommentBlock = false;
+          }
+
+          return p3.substring(spacesToRemove) + p4;
+        }
+
+        return p4;
+      })
       .trim();
   }
 
