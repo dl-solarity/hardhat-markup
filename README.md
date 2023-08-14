@@ -1,4 +1,4 @@
-[![npm](https://img.shields.io/npm/v/@dlsl/hardhat-markup.svg)](https://www.npmjs.com/package/@dlsl/hardhat-markup) [![hardhat](https://hardhat.org/buidler-plugin-badge.svg?1)](https://hardhat.org)
+[![npm](https://img.shields.io/npm/v/@solarity/hardhat-markup.svg)](https://www.npmjs.com/package/@solarity/hardhat-markup) [![hardhat](https://hardhat.org/buidler-plugin-badge.svg?1)](https://hardhat.org)
 
 # Hardhat Markup
 
@@ -11,19 +11,20 @@ This plugin generates markdown documentation of the contracts present in the pro
 ## Installation
 
 ```bash
-npm install --save-dev @dlsl/hardhat-markup
+npm install --save-dev @solarity/hardhat-markup
 ```
 
 Add the following statement to your `hardhat.config.js`:
 
 ```js
-require("@dlsl/hardhat-markup")
+require("@solarity/hardhat-markup")
 ```
+
 
 Or, if you are using TypeScript, add this to your `hardhat.config.ts`:
 
 ```ts
-import "@dlsl/hardhat-markup"
+import "@solarity/hardhat-markup"
 ```
 
 ## Tasks

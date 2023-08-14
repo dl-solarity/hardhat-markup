@@ -1,6 +1,6 @@
 {
-  "name": "@dlsl/hardhat-markup",
-  "version": "1.0.0-rc.14",
+  "name": "@solarity/hardhat-markup",
+  "version": "1.0.0",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -12,7 +12,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dl-solidity-library/hardhat-markup.git"
+    "url": "git+https://github.com/dl-solarity/hardhat-markup.git"
   },
   "keywords": [
     "ethereum",
@@ -21,17 +21,19 @@
     "hardhat",
     "hardhat-plugin",
     "distributedlab",
+    "solarity",
     "documentation",
     "markup"
   ],
   "author": "Distributed Lab",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dl-solidity-library/hardhat-markup/issues"
+    "url": "https://github.com/dl-solarity/hardhat-markup/issues"
   },
-  "homepage": "https://github.com/dl-solidity-library/hardhat-markup#readme",
+  "homepage": "https://github.com/dl-solarity/hardhat-markup#readme",
   "dependencies": {
     "json2md": "^2.0.0",
+    "prettier": "2.8.8",
     "prettier-plugin-solidity": "^1.1.3",
     "solidity-ast": "^0.4.49"
   },
