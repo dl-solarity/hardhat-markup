@@ -1,16 +1,15 @@
 {
   "name": "@solarity/hardhat-markup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Customizable markdown smart contracts documentation",
-  "scripts": {
-    "install": "npx husky install",
-    "compile": "tsc --build .",
-    "build-local": "npm run compile && npm run lint-fix && bash ./scripts/build-local.sh",
-    "clean": "bash ./scripts/clean.sh",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
-    "publish-to-npm": "npm run compile && npm run lint-fix && bash ./scripts/publish.sh"
-  },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/src/",
+    "src/",
+    "LICENSE",
+    "README.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dl-solarity/hardhat-markup.git"
@@ -32,11 +31,19 @@
     "url": "https://github.com/dl-solarity/hardhat-markup/issues"
   },
   "homepage": "https://github.com/dl-solarity/hardhat-markup#readme",
+  "scripts": {
+    "install": "npx husky install",
+    "build": "tsc --build .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
+    "publish-to-npm": "npm run build && npm run lint-fix && bash ./scripts/publish.sh"
+  },
   "dependencies": {
-    "json2md": "^2.0.0",
+    "json2md": "2.0.0",
     "prettier": "2.8.8",
-    "prettier-plugin-solidity": "^1.1.3",
-    "solidity-ast": "^0.4.49"
+    "prettier-plugin-solidity": "1.1.3",
+    "solidity-ast": "0.4.49",
+    "lodash": "4.17.21"
   },
   "peerDependencies": {
     "hardhat": "^2.10.0"
@@ -46,7 +53,6 @@
     "@types/prettier": "2.7.3",
     "hardhat": "^2.10.0",
     "husky": "^7.0.2",
-    "lodash": "^4.17.21",
     "ts-node": "^8.1.0",
     "typescript": "~4.5.2"
   }
