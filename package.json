@@ -36,7 +36,7 @@
     "build": "tsc --build .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
-    "publish-to-npm": "npm run build && npm run lint-fix && bash ./scripts/publish.sh"
+    "publish-to-npm": "npm run build && npm run lint-fix && npm publish ./ --access public"
   },
   "dependencies": {
     "json2md": "2.0.0",
