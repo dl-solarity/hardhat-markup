@@ -1,5 +1,5 @@
 import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types";
-import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE } from "./constants";
+import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE, LICENSE_H_SIZE } from "./constants";
 import { MDFactory } from "./MDFactory";
 
 export class MDGenerator {
@@ -11,12 +11,8 @@ export class MDGenerator {
     const mdFactory: MDFactory = new MDFactory();
 
     mdFactory.addHeaderTag(contractInfo.name, CONTRACT_NAME_H_SIZE);
-    mdFactory.addHeaderTag(
-      `${contractInfo.isAbstract ? "Abstract " : ""}${this.capitalizeFirstLetter(
-        contractInfo.contractKind
-      )} Description`
-    );
-    mdFactory.addParagraphTag(`License: ${contractInfo.license}`);
+    mdFactory.addHeaderTag("Overview");
+    mdFactory.addHeaderTag(`License: ${contractInfo.license}`, LICENSE_H_SIZE);
 
     contractInfo.documentations.forEach((blockInfos) => {
       this.generateBlockInfo(mdFactory, blockInfos);
