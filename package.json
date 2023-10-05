@@ -1,6 +1,6 @@
 {
   "name": "@solarity/hardhat-markup",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
