@@ -99,7 +99,7 @@ export class MDGenerator {
       name?: string;
       type?: string;
       description: string;
-    }[]
+    }[],
   ) {
     const raws: string[][] = [];
 
@@ -117,7 +117,7 @@ export class MDGenerator {
       name?: string;
       type?: string;
       description: string;
-    }[]
+    }[],
   ) {
     const raws: string[][] = [];
 

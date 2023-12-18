@@ -26,6 +26,8 @@ import {
   STRUCTS_BLOCK_NAME,
 } from "./constants";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
+
+import pluginSolidity from "prettier-plugin-solidity";
 import prettier = require("prettier");
 
 export class Parser {
@@ -38,10 +40,10 @@ export class Parser {
     this.deref = astDereferencer(contractBuildInfo.output);
   }
 
-  parseContractInfo(source: string, name: string): ContractInfo {
+  async parseContractInfo(source: string, name: string): Promise<ContractInfo> {
     const sourceUnit: SourceUnit = this.contractBuildInfo.output.sources[source].ast;
     const contractNode: ContractDefinition = sourceUnit.nodes.find(
-      (node) => isNodeType("ContractDefinition", node) && node.name === name
+      (node) => isNodeType("ContractDefinition", node) && node.name === name,
     ) as ContractDefinition;
 
     if (!contractNode) {
@@ -58,12 +60,12 @@ export class Parser {
       functions = allFunctions.filter((node) => this.isPublicOrExternal(node));
     }
 
-    const contractInfo: ContractInfo = {
+    return {
       name: contractNode.name,
       isAbstract: contractNode.abstract,
       contractKind: contractNode.contractKind,
       license: this.parseLicense(sourceUnit),
-      documentations: [
+      documentations: await Promise.all([
         this.parseDocumentation([contractNode], ""),
         this.parseDocumentation([...findAll("EnumDefinition", contractNode)], ENUMS_BLOCK_NAME),
         this.parseDocumentation([...findAll("StructDefinition", contractNode)], STRUCTS_BLOCK_NAME),
@@ -71,22 +73,20 @@ export class Parser {
         this.parseDocumentation([...findAll("ErrorDefinition", contractNode)], ERRORS_BLOCK_NAME),
         this.parseDocumentation(
           [...findAll("VariableDeclaration", contractNode)].filter(
-            (node) => node.constant && this.isPublicOrExternal(node)
+            (node) => node.constant && this.isPublicOrExternal(node),
           ),
-          CONSTANTS_BLOCK_NAME
+          CONSTANTS_BLOCK_NAME,
         ),
         this.parseDocumentation(
           [...findAll("VariableDeclaration", contractNode)].filter(
-            (node) => !node.constant && this.isPublicOrExternal(node)
+            (node) => !node.constant && this.isPublicOrExternal(node),
           ),
-          STATE_VARIABLES_BLOCK_NAME
+          STATE_VARIABLES_BLOCK_NAME,
         ),
         this.parseDocumentation([...findAll("ModifierDefinition", contractNode)], MODIFIERS_BLOCK_NAME),
         this.parseDocumentation(functions, FUNCTIONS_BLOCK_NAME),
-      ],
+      ]),
     };
-
-    return contractInfo;
   }
 
   isInternal(node: FunctionDefinition | VariableDeclaration): boolean {
@@ -105,8 +105,8 @@ export class Parser {
     return node.functionSelector ? ` (0x${node.functionSelector})` : "";
   }
 
-  applyPrettier(text: string): string {
-    return prettier.format(text, { parser: "solidity-parse" }).trim();
+  async applyPrettier(text: string): Promise<string> {
+    return (await prettier.format(text, { parser: "solidity-parse", plugins: [pluginSolidity] })).trim();
   }
 
   parseHeader(node: any): string {
@@ -126,7 +126,7 @@ export class Parser {
     }
   }
 
-  parseFullSign(node: any): string {
+  async parseFullSign(node: any): Promise<string> {
     switch (node.nodeType) {
       case "FunctionDefinition": {
         return this.parseFullFunctionSign(node);
@@ -158,14 +158,16 @@ export class Parser {
     }
   }
 
-  parseDocumentation(nodes: Node[], name: string): DocumentationBlock {
+  async parseDocumentation(nodes: Node[], name: string): Promise<DocumentationBlock> {
     return {
       blockName: name,
-      documentation: nodes.map((node) => ({
-        fullSign: this.parseFullSign(node),
-        header: this.parseHeader(node),
-        natSpecDocumentation: this.parseNatSpecDocumentation(node),
-      })),
+      documentation: await Promise.all(
+        nodes.map(async (node) => ({
+          fullSign: await this.parseFullSign(node),
+          header: this.parseHeader(node),
+          natSpecDocumentation: this.parseNatSpecDocumentation(node),
+        })),
+      ),
     };
   }
 
@@ -185,7 +187,7 @@ export class Parser {
     parameters: VariableDeclaration[],
     delimiter: string = ", ",
     beginning: string = "",
-    ending: string = ""
+    ending: string = "",
   ): string {
     return parameters
       .map((variableDeclaration) => {
@@ -210,12 +212,12 @@ export class Parser {
                   return this.parseStringFromSourceCode(expression.src);
                 })
                 .join(", ")})`
-            : "")
+            : ""),
       )
       .join(" ");
   }
 
-  parseFullFunctionSign(functionDefinition: FunctionDefinition): string {
+  async parseFullFunctionSign(functionDefinition: FunctionDefinition): Promise<string> {
     const kind = functionDefinition.kind;
     const functionName = functionDefinition.name.length === 0 ? "" : ` ${functionDefinition.name}`;
     const parameters = this.buildParameterString(functionDefinition.parameters.parameters);
@@ -232,8 +234,8 @@ export class Parser {
         ? ""
         : ` returns (${this.buildParameterString(functionDefinition.returnParameters.parameters)})`;
 
-    const formattedRes = this.applyPrettier(
-      `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`
+    const formattedRes = await this.applyPrettier(
+      `${kind}${functionName}(${parameters})${visibility}${stateMutability}${modifiers}${virtual}${overrides}${returns};`,
     );
 
     return formattedRes.substring(0, formattedRes.length - 1);
@@ -280,7 +282,7 @@ export class Parser {
       structDefinition.members,
       "\n",
       "\t",
-      ";"
+      ";",
     )}\n}`;
   }
 
@@ -292,7 +294,7 @@ export class Parser {
 
   parseFullModifierSign(modifierDefinition: ModifierDefinition): string {
     return `modifier ${modifierDefinition.name}(${this.buildParameterString(
-      modifierDefinition.parameters.parameters
+      modifierDefinition.parameters.parameters,
     )})`;
   }
 
@@ -344,7 +346,7 @@ export class Parser {
   }
 
   getValidParentNodeToInheritDocumentation(
-    baseNode: FunctionDefinition | VariableDeclaration
+    baseNode: FunctionDefinition | VariableDeclaration,
   ): FunctionDefinition | null {
     if (!baseNode.baseFunctions || baseNode.baseFunctions.length !== 1) {
       return null;
@@ -371,7 +373,7 @@ export class Parser {
 
   findFunctionDefinitionByContractName(
     node: FunctionDefinition | VariableDeclaration,
-    contractName: string
+    contractName: string,
   ): FunctionDefinition | undefined {
     if (this.deref("ContractDefinition", node.scope).canonicalName === contractName) {
       return node as FunctionDefinition;

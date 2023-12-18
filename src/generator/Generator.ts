@@ -56,7 +56,7 @@ export class Generator {
         continue;
       }
 
-      const contractInfo: ContractInfo = new Parser(buildInfo).parseContractInfo(source, name);
+      const contractInfo: ContractInfo = await new Parser(buildInfo).parseContractInfo(source, name);
 
       const genDir = `${this.outDir}/${path.dirname(source)}`;
       const genPath = `${genDir}/${name}.md`;

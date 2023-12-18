@@ -60,5 +60,5 @@ task(TASK_CLEAN, "Clears the cache and deletes all artifacts").setAction(
       }
 
     await runSuper();
-  }
+  },
 );
