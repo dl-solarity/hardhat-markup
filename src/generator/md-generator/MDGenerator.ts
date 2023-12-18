@@ -24,7 +24,9 @@ export class MDGenerator {
   generateBlockInfo(mdFactory: MDFactory, blockInfos: DocumentationBlock) {
     if (blockInfos.documentation.length === 0) return;
 
-    mdFactory.addHeaderTag(blockInfos.blockName);
+    if (blockInfos.blockName.length !== 0) {
+      mdFactory.addHeaderTag(blockInfos.blockName);
+    }
 
     blockInfos.documentation.forEach((blockInfo) => {
       this.generateBlock(mdFactory, blockInfo);
