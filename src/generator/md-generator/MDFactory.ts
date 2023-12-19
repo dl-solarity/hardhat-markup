@@ -83,7 +83,7 @@ export class MDFactory {
     rows.forEach((row: string[]) => {
       if (row.length != headers.length) {
         throw new Error(
-          `Failed to create Table tag. Expected ${headers.length} columns, actual - ${row.length} columns in ${row} row`
+          `Failed to create Table tag. Expected ${headers.length} columns, actual - ${row.length} columns in ${row} row`,
         );
       }
     });
