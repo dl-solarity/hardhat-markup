@@ -76,6 +76,163 @@ module.exports = {
 - If path is a directory, all its files and sub-directories are considered matching.
 - If source is a node module, `node_modules` must not be present in the path.
 
+## Example
+
+<table style="width:100%">
+<tr>
+<th>Generated markdown</th>
+<th>Example Solidity code</th>
+</tr>
+
+
+<tr>
+<td>
+  
+# Example
+
+## Overview
+
+#### License: MIT
+
+```solidity
+contract Example
+```
+
+Author: Solidity lover
+
+The example contract
+
+This contract is meant to work as the example of how `hardhat-markup` plugin works.
+
+In a nutshell, the plugin parses natspec documentation and presents it in a beautiful,
+Uniswap-like style, leveraging MD format.
+
+You can also have code blocks inside the comments!
+
+```solidity
+contract Example {
+    function foo() external {
+        . . .
+    }
+}
+```
+## Events info
+
+### Random
+
+```solidity
+event Random(uint256 value)
+```
+
+The event that emits a random value
+
+
+Parameters:
+
+| Name  | Type    | Description      |
+| :---- | :------ | :--------------- |
+| value | uint256 | the random value |
+
+## Errors info
+
+### Oops
+
+```solidity
+error Oops(string reason)
+```
+
+The error, occurs from time to time
+
+
+Parameters:
+
+| Name   | Type   | Description |
+| :----- | :----- | :---------- |
+| reason | string | the reason  |
+
+## Functions info
+
+### foo (0xbd0d639f)
+
+```solidity
+function foo(address user, uint256 entropy) external returns (uint256)
+```
+
+The very important function that computes the answer to the Universe
+
+
+Parameters:
+
+| Name    | Type    | Description                        |
+| :------ | :------ | :--------------------------------- |
+| user    | address | the user who created the Universe  |
+| entropy | uint256 | the entropy                        |
+
+
+Return values:
+
+| Name | Type    | Description     |
+| :--- | :------ | :-------------- |
+| [0]  | uint256 | the answer (42) |
+
+  
+</td>
+<td>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+/**
+ * @author Solidity lover
+ * @notice The example contract
+ *
+ * This contract is meant to work as the example of how `hardhat-markup` plugin works.
+ *
+ * In a nutshell, the plugin parses natspec documentation and presents it in a beautiful,
+ * Uniswap-like style, leveraging MD format.
+ *
+ * You can also have code blocks inside the comments!
+ *
+ * ```solidity
+ * contract Example {
+ *     function foo() external {
+ *         . . .
+ *     }
+ * }
+ * ```
+ */
+contract Example {
+    /**
+     * @notice The event that emits a random value
+     * @param value the random value
+     */
+    event Random(uint256 value);
+
+    /**
+     * @notice The error, occurs from time to time
+     * @param reason the reason
+     */
+    error Oops(string reason);
+
+    /**
+     * @notice The very important function that computes the answer to the Universe
+     * @param user the user who created the Universe
+     * @param entropy the entropy
+     * @return the answer (42)
+     */
+    function foo(address user, uint256 entropy) external returns (uint256) {
+        emit Random(uint256(uint160(user)) + entropy);
+
+        return 42;
+    }
+}
+```
+
+</td>
+</tr>
+</table>
+
 ## Known limitations
 
 - `Vyper` is currently not supported.
