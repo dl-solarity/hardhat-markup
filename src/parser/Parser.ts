@@ -484,15 +484,14 @@ export class Parser {
 
               const variableDeclaration = params.find((param) => param.name == paramName);
 
-              if (!variableDeclaration) {
-                throw new Error(`Invalid param name: ${paramName}`);
+              // if param name is not a valid param name, check if it is a return param
+              if (variableDeclaration) {
+                const type = variableDeclaration.typeDescriptions?.typeString || undefined;
+
+                natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+
+                break;
               }
-
-              const type = variableDeclaration.typeDescriptions?.typeString || undefined;
-
-              natSpec.params.push({ name: paramName, type: type, description: paramDescription });
-
-              break;
             }
             case "return": {
               natSpec.returns ??= [];
