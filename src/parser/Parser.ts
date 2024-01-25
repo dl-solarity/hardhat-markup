@@ -434,8 +434,10 @@ export class Parser {
 
         const natSpecRegex = /^(?:@(\w+|custom:[a-z][a-z-]*) )?((?:(?!^@(?:\w+|custom:[a-z][a-z-]*) )[^])*)/gm;
 
-        for (const match of text.matchAll(natSpecRegex)) {
-          const [, tag = "notice", rawText] = match;
+        const matches = [...text.matchAll(natSpecRegex)];
+
+        for (let i = 0; i < matches.length; i++) {
+          const [, tag = "notice", rawText] = matches[i];
           const text = this.replaceMultipleNewLinesWithOne(rawText);
 
           switch (tag) {
@@ -484,16 +486,30 @@ export class Parser {
 
               const variableDeclaration = params.find((param) => param.name == paramName);
 
-              // if param name is not a valid param name, check if it is a return param
-              if (variableDeclaration) {
-                const type = variableDeclaration.typeDescriptions?.typeString || undefined;
-
-                natSpec.params.push({ name: paramName, type: type, description: paramDescription });
-
+              // so that tag was not found, and it may be a return tag
+              if (!variableDeclaration) {
+                // protection from infinite loop
+                if (node.nodeType !== "EventDefinition") {
+                  matches[i][1] = "return";
+                  i--;
+                }
                 break;
               }
+
+              const type = variableDeclaration.typeDescriptions?.typeString || undefined;
+
+              natSpec.params.push({ name: paramName, type: type, description: paramDescription });
+
+              break;
             }
             case "return": {
+              // there is no return tag in events, so it is a param tag
+              if (node.nodeType === "EventDefinition") {
+                matches[i][1] = "param";
+                i--;
+                break;
+              }
+
               natSpec.returns ??= [];
 
               let currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
