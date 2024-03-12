@@ -1,6 +1,6 @@
 {
   "name": "@solarity/hardhat-markup",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -32,9 +32,7 @@
   },
   "homepage": "https://github.com/dl-solarity/hardhat-markup#readme",
   "scripts": {
-    "prepare": "npx husky",
-    "prepack": "pinst --disable",
-    "postpack": "pinst --enable",
+    "prepare": "husky",
     "build": "tsc --build .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
@@ -55,7 +53,6 @@
     "@types/prettier": "3.0.0",
     "hardhat": "2.20.1",
     "husky": "^9.0.11",
-    "pinst": "^3.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
