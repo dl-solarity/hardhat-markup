@@ -393,6 +393,30 @@ export class Parser {
     }
   }
 
+  findModifierDefinitionByContractName(node: ModifierDefinition, contractName: string): ModifierDefinition | undefined {
+    // Since we cannot access the scope (Contract) in which the modifier is defined,
+    // we are looking for the topmost parent modifier documentation without the @inheritdoc tag.
+    const inheritDocsRegex = /@inheritdoc (\w+)/gm;
+    const matches = inheritDocsRegex.exec(node.documentation?.text!);
+
+    if (!matches) {
+      return node as ModifierDefinition;
+    }
+
+    if (!node.baseModifiers) {
+      return undefined;
+    }
+
+    for (let i = 0; i < node.baseModifiers.length; i++) {
+      const baseModifier = this.deref("ModifierDefinition", node.baseModifiers[i]);
+      const result = this.findModifierDefinitionByContractName(baseModifier, contractName);
+
+      if (result) {
+        return result;
+      }
+    }
+  }
+
   parseNameAndDescription(text: string): [name: string, description: string] {
     const nameAndDescriptionRegex = /^(\w+).? ([\s\S]*)?/gm;
     const matches = nameAndDescriptionRegex.exec(text);
@@ -556,7 +580,13 @@ export class Parser {
               }
 
               const [, parentName] = matches;
-              const parentNode = this.findFunctionDefinitionByContractName(node, parentName);
+
+              let parentNode;
+              if (node.nodeType === "FunctionDefinition") {
+                parentNode = this.findFunctionDefinitionByContractName(node, parentName);
+              } else if (node.nodeType === "ModifierDefinition") {
+                parentNode = this.findModifierDefinitionByContractName(node, parentName);
+              }
 
               if (!parentNode) {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
