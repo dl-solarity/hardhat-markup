@@ -393,6 +393,28 @@ export class Parser {
     }
   }
 
+  findModifierDefinitionByContractName(node: ModifierDefinition, contractName: string): ModifierDefinition | undefined {
+    const inheritDocsRegex = /@inheritdoc (\w+)/gm;
+    const matches = inheritDocsRegex.exec(node.documentation?.text!);
+
+    if (!matches) {
+      return node as ModifierDefinition;
+    }
+
+    if (!node.baseModifiers) {
+      return undefined;
+    }
+
+    for (let i = 0; i < node.baseModifiers.length; i++) {
+      const baseFunction = this.deref("ModifierDefinition", node.baseModifiers[i]);
+      const result = this.findModifierDefinitionByContractName(baseFunction, contractName);
+
+      if (result) {
+        return result;
+      }
+    }
+  }
+
   parseNameAndDescription(text: string): [name: string, description: string] {
     const nameAndDescriptionRegex = /^(\w+).? ([\s\S]*)?/gm;
     const matches = nameAndDescriptionRegex.exec(text);
@@ -556,7 +578,13 @@ export class Parser {
               }
 
               const [, parentName] = matches;
-              const parentNode = this.findFunctionDefinitionByContractName(node, parentName);
+
+              let parentNode;
+              if (node.nodeType === "FunctionDefinition") {
+                parentNode = this.findFunctionDefinitionByContractName(node, parentName);
+              } else if (node.nodeType === "ModifierDefinition") {
+                parentNode = this.findModifierDefinitionByContractName(node, parentName);
+              }
 
               if (!parentNode) {
                 throw new Error(`Invalid inheritdoc tag: ${text}`);
