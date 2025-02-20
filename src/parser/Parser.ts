@@ -375,7 +375,9 @@ export class Parser {
     node: FunctionDefinition | VariableDeclaration,
     contractName: string,
   ): FunctionDefinition | undefined {
-    if (this.deref("ContractDefinition", node.scope).canonicalName === contractName) {
+    const contract = this.deref("ContractDefinition", node.scope);
+
+    if (contract.canonicalName === contractName || contract.name === contractName) {
       return node as FunctionDefinition;
     }
 
@@ -545,7 +547,7 @@ export class Parser {
               }
 
               const currentParameterName = currentParameter.name;
-              const type = currentParameter.typeDescriptions.typeString!;
+              const type = currentParameter.typeDescriptions?.typeString!;
 
               // if name is not defined for return parameter
               if (!currentParameterName) {
