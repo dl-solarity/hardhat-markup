@@ -1,6 +1,6 @@
 {
   "name": "@solarity/hardhat-markup",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -46,7 +46,7 @@
     "solidity-ast": "0.4.59"
   },
   "peerDependencies": {
-    "hardhat": "^2.22.0"
+    "hardhat": "^2.10.0"
   },
   "devDependencies": {
     "@types/json2md": "^1.5.4",
