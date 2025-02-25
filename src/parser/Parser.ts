@@ -486,8 +486,10 @@ export class Parser {
             }
             case "dev": {
               if (!natSpec.dev) {
-                natSpec.dev = text;
+                natSpec.dev = [];
               }
+
+              natSpec.dev.push(text);
 
               break;
             }
@@ -588,6 +590,8 @@ export class Parser {
                 parentNode = this.findFunctionDefinitionByContractName(node, parentName);
               } else if (node.nodeType === "ModifierDefinition") {
                 parentNode = this.findModifierDefinitionByContractName(node, parentName);
+              } else if (node.nodeType === "VariableDeclaration") {
+                break;
               }
 
               if (!parentNode) {
