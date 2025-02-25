@@ -236,3 +236,4 @@ contract Example {
 ## Known limitations
 
 - `Vyper` is currently not supported.
+- `inheritdoc` parsing is ignored for state variable declarations.
