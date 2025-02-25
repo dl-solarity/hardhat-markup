@@ -21,7 +21,7 @@ export interface NatSpecDocumentation {
   title?: string;
   author?: string;
   notice?: string;
-  dev?: string;
+  dev?: string[];
   params?: {
     name?: string;
     type?: string;

@@ -65,7 +65,7 @@ export class MDGenerator {
     }
 
     if (documentation.dev) {
-      res.push(documentation.dev);
+      res.push(...documentation.dev);
     }
 
     if (documentation.custom) {
