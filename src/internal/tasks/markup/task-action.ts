@@ -15,10 +15,12 @@ const verifyEtherscanAction: NewTaskActionFunction<DlMarkupArgs> = async (
   hre.config.markup.noCompile = !noCompile ? hre.config.markup.noCompile : noCompile;
   hre.config.markup.verbose = !markupVerbose ? hre.config.markup.verbose : markupVerbose;
 
-  await hre.tasks.getTask("compile").run({
-    quiet: true,
-    defaultBuildProfile: "production",
-  });
+  if (!hre.config.markup.noCompile) {
+    await hre.tasks.getTask("compile").run({
+      quiet: true,
+      defaultBuildProfile: "production",
+    });
+  }
 
   try {
     const contracts = await new Generator(hre).generate();
