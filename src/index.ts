@@ -56,4 +56,4 @@ const hardhatPlugin: HardhatPlugin = {
   npmPackage: "@solarity/hardhat-markup",
 } satisfies HardhatPlugin;
 
-export default hardhatPlugin as any;
+export default hardhatPlugin;
