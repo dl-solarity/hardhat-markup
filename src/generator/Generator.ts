@@ -1,14 +1,15 @@
+import fs from "fs";
+import fsp from "fs/promises";
+import path from "path";
+
+import { ArtifactManager } from "hardhat/types/artifacts";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
+import { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
 
 import { Parser } from "../parser/Parser.js";
 import { ContractInfo } from "../parser/types.js";
-import { MDGenerator } from "./md-generator/MDGenerator.js";
-import { ArtifactManager } from "hardhat/types/artifacts";
 
-import path from "path";
-import fs from "fs";
-import fsp from "fs/promises";
-import { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
+import { MDGenerator } from "./md-generator/MDGenerator.js";
 
 export class Generator {
   private artifacts: ArtifactManager;

@@ -1,10 +1,12 @@
+import { isAbsolute } from "path";
+
 import type { ConfigurationVariableResolver, HardhatConfig, HardhatUserConfig } from "hardhat/types/config";
 import type { ConfigHooks, HardhatUserConfigValidationError } from "hardhat/types/hooks";
 
 import { validateUserConfigZodType } from "@nomicfoundation/hardhat-zod-utils";
+
 import { z } from "zod";
 
-import { isAbsolute } from "path";
 import type { DlMarkupConfig, DlMarkupUserConfig } from "../../types.js";
 
 export default async (): Promise<Partial<ConfigHooks>> => ({

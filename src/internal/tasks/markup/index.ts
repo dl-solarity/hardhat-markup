@@ -1,8 +1,7 @@
+import { ArgumentType } from "hardhat/types/arguments";
 import type { NewTaskDefinition } from "hardhat/types/tasks";
 
 import { task } from "hardhat/config";
-
-import { ArgumentType } from "hardhat/types/arguments";
 
 const markupTask: NewTaskDefinition = task(["markup"], "Generate markups for compiled contracts")
   .addOption({

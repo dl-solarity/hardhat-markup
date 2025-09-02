@@ -1,4 +1,6 @@
-import type { SolidityBuildInfoOutput, SolidityBuildInfo } from "hardhat/types/solidity";
+import type { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
+
+import pluginSolidity from "prettier-plugin-solidity";
 import {
   ContractDefinition,
   EnumDefinition,
@@ -14,6 +16,7 @@ import {
 } from "solidity-ast";
 import type { Node } from "solidity-ast/node.js";
 import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils.js";
+
 import {
   CONSTANTS_BLOCK_NAME,
   DEFAULT_LICENSE,
@@ -27,7 +30,6 @@ import {
 } from "./constants.js";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.js";
 
-import pluginSolidity from "prettier-plugin-solidity";
 import prettier = require("prettier");
 
 export class Parser {

@@ -2,10 +2,10 @@ import type { NewTaskActionFunction } from "hardhat/types/tasks";
 
 import { HardhatPluginError } from "@nomicfoundation/hardhat-errors";
 
-import type { DlMarkupArgs } from "./types.js";
-
-import { Generator } from "../../../generator/Generator.js";
 import { PLUGIN_ID } from "../../../constants.js";
+import { Generator } from "../../../generator/Generator.js";
+
+import type { DlMarkupArgs } from "./types.js";
 
 const verifyEtherscanAction: NewTaskActionFunction<DlMarkupArgs> = async (
   { outdir, noCompile, markupVerbose },
