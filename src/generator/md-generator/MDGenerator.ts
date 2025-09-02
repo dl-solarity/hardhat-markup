@@ -1,6 +1,7 @@
-import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types";
-import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE, LICENSE_H_SIZE } from "./constants";
-import { MDFactory } from "./MDFactory";
+import { MDFactory } from "./MDFactory.js";
+import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE, LICENSE_H_SIZE } from "./constants.js";
+
+import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types.js";
 
 export class MDGenerator {
   capitalizeFirstLetter(str: string): string {
@@ -21,7 +22,7 @@ export class MDGenerator {
     return mdFactory.getContractTagsStr();
   }
 
-  generateBlockInfo(mdFactory: MDFactory, blockInfos: DocumentationBlock) {
+  generateBlockInfo(mdFactory: MDFactory, blockInfos: DocumentationBlock): string | undefined {
     if (blockInfos.documentation.length === 0) return;
 
     if (blockInfos.blockName.length !== 0) {
@@ -35,7 +36,7 @@ export class MDGenerator {
     return mdFactory.getContractTagsStr();
   }
 
-  generateBlock(mdFactory: MDFactory, blockInfo: Documentation) {
+  generateBlock(mdFactory: MDFactory, blockInfo: Documentation): void {
     if (blockInfo.header) {
       mdFactory.addHeaderTag(blockInfo.header, FUNCTION_NAME_H_SIZE);
     }
@@ -49,7 +50,7 @@ export class MDGenerator {
     }
   }
 
-  generateDocumentationBlock(mdFactory: MDFactory, documentation: NatSpecDocumentation) {
+  generateDocumentationBlock(mdFactory: MDFactory, documentation: NatSpecDocumentation): void {
     const res = [];
 
     if (documentation.author) {
@@ -100,7 +101,7 @@ export class MDGenerator {
       type?: string;
       description: string;
     }[],
-  ) {
+  ): void {
     const raws: string[][] = [];
 
     for (let i = 0; i < documentation.length; i++) {
@@ -118,7 +119,7 @@ export class MDGenerator {
       type?: string;
       description: string;
     }[],
-  ) {
+  ): void {
     const raws: string[][] = [];
 
     for (let i = 0; i < documentation.length; i++) {

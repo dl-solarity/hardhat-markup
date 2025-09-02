@@ -4,6 +4,10 @@
   "description": "Customizable markdown smart contracts documentation",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
+  "type": "module",
   "files": [
     "dist/src/",
     "src/",
@@ -35,22 +39,25 @@
     "prepare": "husky",
     "build": "tsc --build .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint-fix": "prettier --write \"./**/*.ts\" && prettier --write \"./**/*.js\"",
+    "lint-fix": "prettier --write \"./**/*.ts\"",
     "publish-to-npm": "npm run build && npm run lint-fix && npm publish ./ --access public"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-utils": "^3.0.0",
+    "@nomicfoundation/hardhat-zod-utils": "^3.0.0",
     "json2md": "2.0.2",
     "lodash": "4.17.21",
     "prettier": "3.5.1",
     "prettier-plugin-solidity": "1.4.2",
-    "solidity-ast": "0.4.59"
+    "solidity-ast": "0.4.59",
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
-    "hardhat": "^2.10.0"
+    "hardhat": "^3.0.0"
   },
   "devDependencies": {
+    "@tsconfig/node22": "^22.0.2",
     "@types/json2md": "^1.5.4",
-    "hardhat": "2.22.18",
     "husky": "^9.1.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"

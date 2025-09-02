@@ -1,38 +1,39 @@
-import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants";
-import json2md = require("json2md");
+import json2md from "json2md";
+
+import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants.js";
 
 export class MDFactory {
-  private contractTags: any[];
+  private readonly contractTags: any[];
 
   constructor() {
     this.contractTags = [];
   }
 
-  addHeaderTag(headerContent: string, headerSize: number | string = TOPIC_H_SIZE) {
+  addHeaderTag(headerContent: string, headerSize: number | string = TOPIC_H_SIZE): void {
     this.contractTags.push(this.createHeaderTag(headerContent, headerSize));
   }
 
-  addPlainText(plainTextContent: string) {
+  addPlainText(plainTextContent: string): void {
     this.contractTags.push(plainTextContent);
   }
 
-  addParagraphTag(pContent: string) {
+  addParagraphTag(pContent: string): void {
     this.contractTags.push(this.createParagraphTag(pContent));
   }
 
-  addUlTag(ulContent: string[]) {
+  addUlTag(ulContent: string[]): void {
     this.contractTags.push(this.createUlTag(ulContent));
   }
 
-  addOlTag(olContent: string[]) {
+  addOlTag(olContent: string[]): void {
     this.contractTags.push(this.createOlTag(olContent));
   }
 
-  addTableTag(headers: string[], rows: string[][], aligns: AlignTypes[] = [], isPretty: boolean = true) {
+  addTableTag(headers: string[], rows: string[][], aligns: AlignTypes[] = [], isPretty: boolean = true): void {
     this.contractTags.push(this.createTableTag(headers, rows, aligns, isPretty));
   }
 
-  addCodeTag(codeContent: string[], language: string = DEFAULT_CODE_LANGUAGE) {
+  addCodeTag(codeContent: string[], language: string = DEFAULT_CODE_LANGUAGE): void {
     this.contractTags.push(this.createCodeTag(codeContent, language));
   }
 

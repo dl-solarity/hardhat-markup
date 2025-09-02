@@ -1,14 +1,17 @@
-import { Artifacts, HardhatRuntimeEnvironment } from "hardhat/types";
-import { Parser } from "../parser/Parser";
-import { ContractInfo } from "../parser/types";
-import { MDGenerator } from "./md-generator/MDGenerator";
+import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 
-const path = require("path");
-const fs = require("fs");
-const fsp = require("fs/promises");
+import { Parser } from "../parser/Parser.js";
+import { ContractInfo } from "../parser/types.js";
+import { MDGenerator } from "./md-generator/MDGenerator.js";
+import { ArtifactManager } from "hardhat/types/artifacts";
+
+import path from "path";
+import fs from "fs";
+import fsp from "fs/promises";
+import { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
 
 export class Generator {
-  private artifacts: Artifacts;
+  private artifacts: ArtifactManager;
   private outDir: string;
   private onlyFiles: string[];
   private skipFiles: string[];
@@ -24,13 +27,13 @@ export class Generator {
     this.verbose = hre.config.markup.verbose;
   }
 
-  async generate() {
+  async generate(): Promise<string[]> {
     console.log("\nGenerating markups...");
 
-    const _names = await this.artifacts.getAllFullyQualifiedNames();
+    const _names = (await this.artifacts.getAllFullyQualifiedNames()).keys().toArray();
 
-    const filterer = (n: any) => {
-      const src = this.artifacts.readArtifactSync(n).sourceName;
+    const filterer = async (n: any) => {
+      const src = (await this.artifacts.readArtifact(n)).sourceName;
 
       return (this.onlyFiles.length == 0 || this.contains(this.onlyFiles, src)) && !this.contains(this.skipFiles, src);
     };
@@ -44,19 +47,29 @@ export class Generator {
     return filtered;
   }
 
-  async generateMDs(artifactNames: string[]) {
+  async generateMDs(artifactNames: string[]): Promise<void> {
     for (const contractName of artifactNames) {
       const [source, name] = contractName.split(":");
 
       this.verboseLog(`\nStarted generating markup for ${name} contract`);
 
-      const buildInfo = await this.artifacts.getBuildInfo(contractName);
+      const buildInfoId = await this.artifacts.getBuildInfoId(contractName);
 
-      if (buildInfo === undefined) {
+      if (buildInfoId === undefined) {
         continue;
       }
 
-      const contractInfo: ContractInfo = await new Parser(buildInfo).parseContractInfo(source, name);
+      const buildInfoPath = await this.artifacts.getBuildInfoPath(buildInfoId);
+      const buildInfoOutputPath = await this.artifacts.getBuildInfoOutputPath(buildInfoId);
+
+      if (!buildInfoPath || !buildInfoOutputPath) {
+        continue;
+      }
+
+      const buildInfo: SolidityBuildInfo = JSON.parse(fs.readFileSync(buildInfoPath, "utf-8"));
+      const buildInfoOutput: SolidityBuildInfoOutput = JSON.parse(fs.readFileSync(buildInfoOutputPath, "utf-8"));
+
+      const contractInfo: ContractInfo = await new Parser(buildInfo, buildInfoOutput).parseContractInfo(source, name);
 
       const genDir = `${this.outDir}/${path.dirname(source)}`;
       const genPath = `${genDir}/${name}.md`;
@@ -68,7 +81,7 @@ export class Generator {
     }
   }
 
-  async clean() {
+  async clean(): Promise<void> {
     if (!fs.existsSync(this.outDir)) {
       return;
     }

@@ -1,64 +1,59 @@
-import { Generator } from "./generator/Generator";
+import { overrideTask } from "hardhat/config";
+import { HardhatPluginError } from "hardhat/plugins";
+import type { HardhatPlugin } from "hardhat/types/plugins";
 
-import { TASK_CLEAN, TASK_COMPILE } from "hardhat/builtin-tasks/task-names";
-import { extendConfig, task, types } from "hardhat/config";
-import { NomicLabsHardhatPluginError } from "hardhat/plugins";
+import "./type-extensions.js";
 
-import { ActionType } from "hardhat/types";
-import { getDefaultMarkupConfig } from "./config";
-import { pluginName, TASK_MARKUP } from "./constants";
-import "./type-extensions";
+import { PLUGIN_ID } from "./constants.js";
 
-interface MarkupArgs {
-  outdir?: string;
-  markupVerbose?: boolean;
-  noCompile?: boolean;
-}
+import { Generator } from "./generator/Generator.js";
 
-extendConfig(getDefaultMarkupConfig);
+import markupTask from "./internal/tasks/markup/index.js";
+import { SolidityConfig } from "hardhat/types/config";
 
-const markup: ActionType<MarkupArgs> = async ({ outdir, markupVerbose, noCompile }, hre) => {
-  hre.config.markup.outdir = outdir === undefined ? hre.config.markup.outdir : outdir;
-  hre.config.markup.noCompile = !noCompile ? hre.config.markup.noCompile : noCompile;
-  hre.config.markup.verbose = !markupVerbose ? hre.config.markup.verbose : markupVerbose;
-
-  if (!hre.config.markup.noCompile) {
-    await hre.run(TASK_COMPILE);
-  }
-
-  try {
-    const contracts = await new Generator(hre).generate();
-
-    console.log(`\nGenerated markups for ${contracts.length} contracts`);
-  } catch (e: any) {
-    throw new NomicLabsHardhatPluginError(pluginName, e.message);
-  }
-};
-
-task(TASK_MARKUP, "Generate markups for compiled contracts")
-  .addOptionalParam("outdir", "Output directory for generated markups", undefined, types.string)
-  .addFlag("noCompile", "Disables contract compilation before generation")
-  .addFlag("markupVerbose", "Enables Hardhat-markup verbose logging")
-  .setAction(markup);
-
-task(TASK_COMPILE).setAction(async function (args, hre, runSuper) {
-  for (let compiler of hre.config.solidity.compilers) {
-    compiler.settings.outputSelection["*"]["*"].push("devdoc");
-    compiler.settings.outputSelection["*"]["*"].push("userdoc");
-  }
-
-  await runSuper();
-});
-
-task(TASK_CLEAN, "Clears the cache and deletes all artifacts").setAction(
-  async ({ global }: { global: boolean }, hre, runSuper) => {
-    if (!global)
-      try {
-        await new Generator(hre).clean();
-      } catch (e: any) {
-        throw new NomicLabsHardhatPluginError(pluginName, e.message);
-      }
-
-    await runSuper();
+const hardhatPlugin: HardhatPlugin = {
+  id: PLUGIN_ID,
+  hookHandlers: {
+    config: () => import("./internal/hook-handlers/config.js"),
   },
-);
+  tasks: [
+    markupTask,
+    overrideTask("compile")
+      .setAction(async () => ({
+        default: async (args, hre, runSuper) => {
+          const solidityConfig = hre.config.solidity as SolidityConfig & { compilers: any[] };
+
+          if (!solidityConfig.compilers) {
+            solidityConfig.compilers = [];
+          }
+
+          for (let compiler of solidityConfig.compilers) {
+            compiler.settings.outputSelection["*"]["*"].push("devdoc");
+            compiler.settings.outputSelection["*"]["*"].push("userdoc");
+          }
+
+          hre.config.solidity = solidityConfig;
+
+          return runSuper(args);
+        },
+      }))
+      .build(),
+    overrideTask("clean")
+      .setAction(async () => ({
+        default: async (args, hre, runSuper) => {
+          if (!args.global)
+            try {
+              await new Generator(hre).clean();
+            } catch (e: any) {
+              throw new HardhatPluginError(PLUGIN_ID, "Failed to remove markup artifacts", e);
+            }
+
+          await runSuper(args);
+        },
+      }))
+      .build(),
+  ],
+  npmPackage: "@solarity/hardhat-markup",
+} satisfies HardhatPlugin;
+
+export default hardhatPlugin as any;
