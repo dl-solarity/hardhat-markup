@@ -29,6 +29,7 @@ import {
   STRUCTS_BLOCK_NAME,
 } from "./constants.js";
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.js";
+import { removeHardhatNamespacePrefix } from "./utils.js";
 
 import prettier = require("prettier");
 
@@ -44,15 +45,9 @@ export class Parser {
     this.deref = astDereferencer(contractBuildInfoOutput.output);
   }
 
-  private normalizePath(path: string): string {
-    const idx = path.indexOf("/");
-
-    return idx >= 0 ? path.slice(idx + 1) : path;
-  }
-
   async parseContractInfo(source: string, name: string): Promise<ContractInfo> {
     const absolutePath = Object.values(this.contractBuildInfoOutput.output.sources).find(
-      (source_rs) => source == this.normalizePath(source_rs.ast.absolutePath),
+      (source_rs) => source == removeHardhatNamespacePrefix(source_rs.ast.absolutePath),
     )?.ast.absolutePath;
 
     const sourceUnit: SourceUnit = this.contractBuildInfoOutput.output.sources[absolutePath].ast;
