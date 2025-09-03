@@ -2,7 +2,7 @@
 
 # Hardhat Markup
 
-[Hardhat](https://hardhat.org) plugin to generate customizable smart contracts documentation.
+[Hardhat 3](https://hardhat.org) plugin to generate customizable smart contracts documentation.
 
 ## What
 
@@ -14,17 +14,14 @@ This plugin generates markdown documentation of the contracts present in the pro
 npm install --save-dev @solarity/hardhat-markup
 ```
 
-Add the following statement to your `hardhat.config.js`:
-
-```js
-require("@solarity/hardhat-markup")
-```
-
-
-Or, if you are using TypeScript, add this to your `hardhat.config.ts`:
+In your `hardhat.config.ts`, import the plugin and add it to the `plugins` array:
 
 ```ts
-import "@solarity/hardhat-markup"
+import hardhatMarkup from "@solarity/hardhat-markup";
+
+export default {
+  plugins: [hardhatMarkup],
+};
 ```
 
 ## Tasks
@@ -52,8 +49,8 @@ Clean old artifacts via `npx hardhat clean` command.
 
 The default configuration looks as follows. You may customize all fields in your *hardhat config* file.
 
-```js
-module.exports = {
+```ts
+export default {
   markup: {
     outdir: "./generated-markups",
     onlyFiles: [],
@@ -61,7 +58,7 @@ module.exports = {
     noCompile: false,
     verbose: false,
   },
-}
+};
 ```
 
 - `outdir`: The directory where to store the generated documentation
@@ -69,6 +66,10 @@ module.exports = {
 - `skipFiles`: Documentation will not be generated for **any matching** sources, also if those match `onlyFiles`
 - `noCompile`: Skips project recompilation before the documentation generation
 - `verbose`: Detailed logging on generation
+
+### Compilation and build profiles
+
+When invoked, `markup` compiles the project (unless `noCompile` is set) using the `production` build profile and ensures `userdoc` and `devdoc` are included in the compiler output.
 
 ### Including/excluding files
 
@@ -83,7 +84,6 @@ module.exports = {
 <th>Generated markdown</th>
 <th>Example Solidity code</th>
 </tr>
-
 
 <tr>
 <td>

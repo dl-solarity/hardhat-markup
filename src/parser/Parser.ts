@@ -1,4 +1,6 @@
-import { BuildInfo } from "hardhat/types";
+import type { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
+
+import pluginSolidity from "prettier-plugin-solidity";
 import {
   ContractDefinition,
   EnumDefinition,
@@ -12,8 +14,9 @@ import {
   StructDefinition,
   VariableDeclaration,
 } from "solidity-ast";
-import { Node } from "solidity-ast/node";
-import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils";
+import type { Node } from "solidity-ast/node.js";
+import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils.js";
+
 import {
   CONSTANTS_BLOCK_NAME,
   DEFAULT_LICENSE,
@@ -24,24 +27,31 @@ import {
   MODIFIERS_BLOCK_NAME,
   STATE_VARIABLES_BLOCK_NAME,
   STRUCTS_BLOCK_NAME,
-} from "./constants";
-import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types";
+} from "./constants.js";
+import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.js";
+import { removeHardhatNamespacePrefix } from "./utils.js";
 
-import pluginSolidity from "prettier-plugin-solidity";
 import prettier = require("prettier");
 
 export class Parser {
-  private contractBuildInfo: BuildInfo;
-  private deref: ASTDereferencer;
+  private contractBuildInfo: SolidityBuildInfo;
+  private contractBuildInfoOutput: SolidityBuildInfoOutput;
+  private readonly deref: ASTDereferencer;
 
-  constructor(contractBuildInfo: BuildInfo) {
+  constructor(contractBuildInfo: SolidityBuildInfo, contractBuildInfoOutput: SolidityBuildInfoOutput) {
     this.contractBuildInfo = contractBuildInfo;
+    this.contractBuildInfoOutput = contractBuildInfoOutput;
 
-    this.deref = astDereferencer(contractBuildInfo.output);
+    this.deref = astDereferencer(contractBuildInfoOutput.output);
   }
 
   async parseContractInfo(source: string, name: string): Promise<ContractInfo> {
-    const sourceUnit: SourceUnit = this.contractBuildInfo.output.sources[source].ast;
+    const absolutePath = Object.values(this.contractBuildInfoOutput.output.sources).find(
+      (source_rs) => source == removeHardhatNamespacePrefix(source_rs.ast.absolutePath),
+    )?.ast.absolutePath;
+
+    const sourceUnit: SourceUnit = this.contractBuildInfoOutput.output.sources[absolutePath].ast;
+
     const contractNode: ContractDefinition = sourceUnit.nodes.find(
       (node) => isNodeType("ContractDefinition", node) && node.name === name,
     ) as ContractDefinition;
@@ -246,7 +256,7 @@ export class Parser {
 
     const sourceFile =
       this.contractBuildInfo.input.sources[
-        Object.values(this.contractBuildInfo.output.sources).find((source) => source.id === id)?.ast.absolutePath
+        Object.values(this.contractBuildInfoOutput.output.sources).find((source) => source.id === id)?.ast.absolutePath
       ].content;
 
     return Buffer.from(sourceFile, "utf-8")

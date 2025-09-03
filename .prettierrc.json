@@ -6,6 +6,31 @@
         "printWidth": 120,
         "tabWidth": 2
       }
+    },
+    {
+      "files": "*.ts",
+      "options": {
+        "plugins": [
+          "@trivago/prettier-plugin-sort-imports"
+        ],
+        "printWidth": 120,
+        "tabWidth": 2,
+        "singleQuote": false,
+        "importOrder": [
+          "./type-extensions.js",
+          "(^fs$)|(fs/promises$)|(path$)",
+          "^hardhat/types",
+          "^hardhat",
+          "^@nomicfoundation/(.*)$",
+          "@?^[a-zA-Z0-9_\\-]+",
+          "^\\u0000",
+          "^\\.\\./",
+          "./internal",
+          "^\\./"
+        ],
+        "importOrderSeparation": true,
+        "importOrderSortSpecifiers": true
+      }
     }
   ]
 }

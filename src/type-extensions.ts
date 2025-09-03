@@ -1,12 +1,13 @@
 import "hardhat/types/config";
-import { DlMarkupConfig, DlMarkupUserConfig } from "./types";
+
+import { DlMarkupConfig, DlMarkupUserConfig } from "./types.js";
 
 declare module "hardhat/types/config" {
-  interface HardhatConfig {
-    markup: DlMarkupConfig;
-  }
-
   interface HardhatUserConfig {
     markup?: DlMarkupUserConfig;
+  }
+
+  interface HardhatConfig {
+    markup: DlMarkupConfig;
   }
 }
