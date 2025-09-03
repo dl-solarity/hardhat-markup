@@ -7,10 +7,7 @@ import { Generator } from "../../../generator/Generator.js";
 
 import type { DlMarkupArgs } from "./types.js";
 
-const verifyEtherscanAction: NewTaskActionFunction<DlMarkupArgs> = async (
-  { outdir, noCompile, markupVerbose },
-  hre,
-) => {
+const markupAction: NewTaskActionFunction<DlMarkupArgs> = async ({ outdir, noCompile, markupVerbose }, hre) => {
   hre.config.markup.outdir = outdir === undefined ? hre.config.markup.outdir : outdir;
   hre.config.markup.noCompile = !noCompile ? hre.config.markup.noCompile : noCompile;
   hre.config.markup.verbose = !markupVerbose ? hre.config.markup.verbose : markupVerbose;
@@ -31,4 +28,4 @@ const verifyEtherscanAction: NewTaskActionFunction<DlMarkupArgs> = async (
   }
 };
 
-export default verifyEtherscanAction;
+export default markupAction;
