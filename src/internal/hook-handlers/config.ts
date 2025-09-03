@@ -7,7 +7,7 @@ import { validateUserConfigZodType } from "@nomicfoundation/hardhat-zod-utils";
 
 import { z } from "zod";
 
-import type { DlMarkupConfig, DlMarkupUserConfig } from "../../types.ts";
+import type { DlMarkupConfig, DlMarkupUserConfig } from "../../types.js";
 
 export default async (): Promise<Partial<ConfigHooks>> => ({
   validateUserConfig,

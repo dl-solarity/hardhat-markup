@@ -1,7 +1,7 @@
-import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types.ts";
+import { ContractInfo, Documentation, DocumentationBlock, NatSpecDocumentation } from "../../parser/types.js";
 
-import { MDFactory } from "./MDFactory.ts";
-import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE, LICENSE_H_SIZE } from "./constants.ts";
+import { MDFactory } from "./MDFactory.js";
+import { CONTRACT_NAME_H_SIZE, FUNCTION_NAME_H_SIZE, LICENSE_H_SIZE } from "./constants.js";
 
 export class MDGenerator {
   capitalizeFirstLetter(str: string): string {

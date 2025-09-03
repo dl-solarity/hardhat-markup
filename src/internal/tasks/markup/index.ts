@@ -18,7 +18,7 @@ const markupTask: NewTaskDefinition = task(["markup"], "Generate markups for com
     name: "markupVerbose",
     description: "Enables Hardhat-markup verbose logging",
   })
-  .setAction(() => import("./task-action.ts"))
+  .setAction(() => import("./task-action.js"))
   .build();
 
 export default markupTask;

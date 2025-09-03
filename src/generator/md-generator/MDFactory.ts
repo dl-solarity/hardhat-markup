@@ -1,6 +1,6 @@
 import json2md from "json2md";
 
-import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants.ts";
+import { AlignTypes, DEFAULT_CODE_LANGUAGE, DEFAULT_TABLE_ALIGN, TOPIC_H_SIZE } from "./constants.js";
 
 export class MDFactory {
   private readonly contractTags: any[];

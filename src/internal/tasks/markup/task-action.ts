@@ -2,10 +2,10 @@ import type { NewTaskActionFunction } from "hardhat/types/tasks";
 
 import { HardhatPluginError } from "@nomicfoundation/hardhat-errors";
 
-import { PLUGIN_ID } from "../../../constants.ts";
-import { Generator } from "../../../generator/Generator.ts";
+import { PLUGIN_ID } from "../../../constants.js";
+import { Generator } from "../../../generator/Generator.js";
 
-import type { DlMarkupArgs } from "./types.ts";
+import type { DlMarkupArgs } from "./types.js";
 
 const markupAction: NewTaskActionFunction<DlMarkupArgs> = async ({ outdir, noCompile, markupVerbose }, hre) => {
   hre.config.markup.outdir = outdir === undefined ? hre.config.markup.outdir : outdir;

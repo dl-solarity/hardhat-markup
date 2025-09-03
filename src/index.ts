@@ -1,19 +1,20 @@
+import "./type-extensions.js";
+
 import type { SolidityConfig } from "hardhat/types/config";
 import type { HardhatPlugin } from "hardhat/types/plugins";
 
 import { overrideTask } from "hardhat/config";
 import { HardhatPluginError } from "hardhat/plugins";
 
-import markupTask from "./internal/tasks/markup/index.ts";
+import markupTask from "./internal/tasks/markup/index.js";
 
-import { PLUGIN_ID } from "./constants.ts";
-import { Generator } from "./generator/Generator.ts";
-import "./type-extensions.ts";
+import { PLUGIN_ID } from "./constants.js";
+import { Generator } from "./generator/Generator.js";
 
 const hardhatPlugin: HardhatPlugin = {
   id: PLUGIN_ID,
   hookHandlers: {
-    config: () => import("./internal/hook-handlers/config.ts"),
+    config: () => import("./internal/hook-handlers/config.js"),
   },
   tasks: [
     markupTask,
