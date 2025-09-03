@@ -2,7 +2,7 @@
 
 # Hardhat Markup
 
-[Hardhat](https://hardhat.org) plugin to generate customizable smart contracts documentation.
+[Hardhat 3](https://hardhat.org) plugin to generate customizable smart contracts documentation.
 
 ## What
 
@@ -84,7 +84,6 @@ When invoked, `markup` compiles the project (unless `noCompile` is set) using th
 <th>Generated markdown</th>
 <th>Example Solidity code</th>
 </tr>
-
 
 <tr>
 <td>
