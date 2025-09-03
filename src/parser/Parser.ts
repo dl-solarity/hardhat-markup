@@ -14,8 +14,8 @@ import {
   StructDefinition,
   VariableDeclaration,
 } from "solidity-ast";
-import type { Node } from "solidity-ast/node.js";
-import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils.js";
+import type { Node } from "solidity-ast/node.ts";
+import { ASTDereferencer, astDereferencer, findAll, isNodeType } from "solidity-ast/utils.ts";
 
 import {
   CONSTANTS_BLOCK_NAME,
@@ -27,9 +27,9 @@ import {
   MODIFIERS_BLOCK_NAME,
   STATE_VARIABLES_BLOCK_NAME,
   STRUCTS_BLOCK_NAME,
-} from "./constants.js";
-import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.js";
-import { removeHardhatNamespacePrefix } from "./utils.js";
+} from "./constants.ts";
+import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.ts";
+import { removeHardhatNamespacePrefix } from "./utils.ts";
 
 import prettier = require("prettier");
 

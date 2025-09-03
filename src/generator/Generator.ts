@@ -6,10 +6,10 @@ import { ArtifactManager } from "hardhat/types/artifacts";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 import { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
 
-import { Parser } from "../parser/Parser.js";
-import { ContractInfo } from "../parser/types.js";
+import { Parser } from "../parser/Parser.ts";
+import { ContractInfo } from "../parser/types.ts";
 
-import { MDGenerator } from "./md-generator/MDGenerator.js";
+import { MDGenerator } from "./md-generator/MDGenerator.ts";
 
 export class Generator {
   private artifacts: ArtifactManager;

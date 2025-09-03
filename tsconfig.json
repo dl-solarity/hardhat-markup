@@ -14,6 +14,8 @@
     "sourceMap": true,
     "composite": true,
     "incremental": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "typeRoots": ["${configDir}/node_modules/@types"]
   },
   "exclude": ["${configDir}/dist", "${configDir}/node_modules"]
