@@ -31,17 +31,20 @@ export class Generator {
   async generate(): Promise<string[]> {
     console.log("\nGenerating markups...");
 
-    const _names = (await this.artifacts.getAllFullyQualifiedNames()).keys().toArray();
+    const names = (await this.artifacts.getAllFullyQualifiedNames()).keys().toArray();
 
-    const filterer = async (n: any) => {
-      const src = (await this.artifacts.readArtifact(n)).sourceName;
+    const resolved = await Promise.all(
+      names.map(async (n) => ({ n, src: (await this.artifacts.readArtifact(n)).sourceName })),
+    );
 
-      return (this.onlyFiles.length == 0 || this.contains(this.onlyFiles, src)) && !this.contains(this.skipFiles, src);
-    };
+    const filtered = resolved
+      .filter(
+        ({ src }) =>
+          (this.onlyFiles.length === 0 || this.contains(this.onlyFiles, src)) && !this.contains(this.skipFiles, src),
+      )
+      .map(({ n }) => n);
 
-    const filtered: string[] = _names.filter(filterer);
-
-    this.verboseLog(`\n${_names.length} compiled contracts found, skipping ${_names.length - filtered.length} of them`);
+    this.verboseLog(`\n${names.length} compiled contracts found, skipping ${names.length - filtered.length} of them`);
 
     await this.generateMDs(filtered);
 
@@ -67,13 +70,13 @@ export class Generator {
         continue;
       }
 
-      const buildInfo: SolidityBuildInfo = JSON.parse(fs.readFileSync(buildInfoPath, "utf-8"));
-      const buildInfoOutput: SolidityBuildInfoOutput = JSON.parse(fs.readFileSync(buildInfoOutputPath, "utf-8"));
+      const buildInfo: SolidityBuildInfo = JSON.parse(await fsp.readFile(buildInfoPath, "utf-8"));
+      const buildInfoOutput: SolidityBuildInfoOutput = JSON.parse(await fsp.readFile(buildInfoOutputPath, "utf-8"));
 
       const contractInfo: ContractInfo = await new Parser(buildInfo, buildInfoOutput).parseContractInfo(source, name);
 
-      const genDir = `${this.outDir}/${path.dirname(source)}`;
-      const genPath = `${genDir}/${name}.md`;
+      const genDir = path.join(this.outDir, path.dirname(source));
+      const genPath = path.join(genDir, `${name}.md`);
 
       await fsp.mkdir(genDir, { recursive: true });
       await fsp.writeFile(genPath, this.mdGenerator.generateContractMDStr(contractInfo));
@@ -93,7 +96,7 @@ export class Generator {
       throw new Error(`outdir is not a directory: ${this.outDir}`);
     }
 
-    await fsp.rm(this.outDir, { recursive: true });
+    await fsp.rm(this.outDir, { recursive: true, force: true });
   }
 
   private contains(pathList: any, source: any) {

@@ -40,7 +40,8 @@
     "build": "tsc --build .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint-fix": "prettier --write \"./**/*.ts\"",
-    "publish-to-npm": "npm run build && npm run lint-fix && npm publish ./ --access public"
+    "publish-to-npm": "npm run build && npm run lint-fix && npm publish ./ --access public",
+    "eslint-check": "eslint . --ext .ts"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-utils": "3.0.0",
@@ -59,8 +60,14 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@tsconfig/node22": "^22.0.2",
     "@types/json2md": "^1.5.4",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.36.0",
+    "eslint-plugin-promise": "^7.2.1",
     "husky": "^9.1.7",
+    "jiti": "^2.6.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.44.1"
   }
 }

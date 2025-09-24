@@ -4,7 +4,8 @@ import type { SolidityConfig } from "hardhat/types/config";
 import type { HardhatPlugin } from "hardhat/types/plugins";
 
 import { overrideTask } from "hardhat/config";
-import { HardhatPluginError } from "hardhat/plugins";
+
+import { HardhatPluginError } from "@nomicfoundation/hardhat-errors";
 
 import markupTask from "./internal/tasks/markup/index.js";
 
@@ -27,9 +28,15 @@ const hardhatPlugin: HardhatPlugin = {
             solidityConfig.compilers = [];
           }
 
-          for (let compiler of solidityConfig.compilers) {
-            compiler.settings.outputSelection["*"]["*"].push("devdoc");
-            compiler.settings.outputSelection["*"]["*"].push("userdoc");
+          for (const compiler of solidityConfig.compilers) {
+            compiler.settings ??= {};
+            compiler.settings.outputSelection ??= { "*": { "*": [] } };
+            compiler.settings.outputSelection["*"] ??= {};
+            compiler.settings.outputSelection["*"]["*"] ??= [];
+
+            const sel = compiler.settings.outputSelection["*"]["*"];
+            if (!sel.includes("devdoc")) sel.push("devdoc");
+            if (!sel.includes("userdoc")) sel.push("userdoc");
           }
 
           hre.config.solidity = solidityConfig;
