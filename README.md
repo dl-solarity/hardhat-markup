@@ -19,8 +19,9 @@ In your `hardhat.config.ts`, import the plugin and add it to the `plugins` array
 ```ts
 import hardhatMarkup from "@solarity/hardhat-markup";
 
-export default {
-  plugins: [hardhatMarkup],
+const config: HardhatUserConfig = {
+    plugins: [hardhatMarkup],
+    // ... your config
 };
 ```
 
