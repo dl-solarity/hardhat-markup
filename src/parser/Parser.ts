@@ -1,5 +1,6 @@
 import type { SolidityBuildInfo, SolidityBuildInfoOutput } from "hardhat/types/solidity";
 
+import prettier from "prettier";
 import pluginSolidity from "prettier-plugin-solidity";
 import {
   ContractDefinition,
@@ -31,8 +32,6 @@ import {
 import { ContractInfo, DocumentationBlock, NatSpecDocumentation } from "./types.js";
 import { removeHardhatNamespacePrefix } from "./utils.js";
 
-import prettier = require("prettier");
-
 export class Parser {
   private contractBuildInfo: SolidityBuildInfo;
   private contractBuildInfoOutput: SolidityBuildInfoOutput;
@@ -49,6 +48,10 @@ export class Parser {
     const absolutePath = Object.values(this.contractBuildInfoOutput.output.sources).find(
       (source_rs) => source == removeHardhatNamespacePrefix(source_rs.ast.absolutePath),
     )?.ast.absolutePath;
+
+    if (!absolutePath || !this.contractBuildInfoOutput.output.sources[absolutePath]) {
+      throw new Error(`Source "${source}" (${name}) not found in build info`);
+    }
 
     const sourceUnit: SourceUnit = this.contractBuildInfoOutput.output.sources[absolutePath].ast;
 
@@ -409,7 +412,8 @@ export class Parser {
     // Since we cannot access the scope (Contract) in which the modifier is defined,
     // we are looking for the topmost parent modifier documentation without the @inheritdoc tag.
     const inheritDocsRegex = /@inheritdoc (\w+)/gm;
-    const matches = inheritDocsRegex.exec(node.documentation?.text!);
+    const documentationText = node.documentation?.text;
+    const matches = documentationText ? inheritDocsRegex.exec(documentationText) : null;
 
     if (!matches) {
       return node as ModifierDefinition;
@@ -451,7 +455,7 @@ export class Parser {
     const nodes = [baseNode];
 
     for (let i = 0; i < nodes.length; i++) {
-      let node = nodes[i];
+      const node = nodes[i];
 
       if (!node.documentation) {
         const parentNode = this.getValidParentNodeToInheritDocumentation(node);
@@ -463,7 +467,7 @@ export class Parser {
         continue;
       }
 
-      let sourceText: string = this.parseStringFromSourceCode(node.documentation.src);
+      const sourceText: string = this.parseStringFromSourceCode(node.documentation.src);
 
       if (sourceText) {
         const text = this.deleteCommentSymbols(sourceText);
@@ -550,7 +554,7 @@ export class Parser {
 
               natSpec.returns ??= [];
 
-              let currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
+              const currentParameter: VariableDeclaration = isNodeType("FunctionDefinition", node)
                 ? node.returnParameters.parameters[natSpec.returns.length]
                 : node;
 
@@ -559,7 +563,7 @@ export class Parser {
               }
 
               const currentParameterName = currentParameter.name;
-              const type = currentParameter.typeDescriptions?.typeString!;
+              const type = currentParameter.typeDescriptions?.typeString || "";
 
               // if name is not defined for return parameter
               if (!currentParameterName) {

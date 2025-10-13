@@ -6,7 +6,7 @@ import { task } from "hardhat/config";
 const markupTask: NewTaskDefinition = task(["markup"], "Generate markups for compiled contracts")
   .addOption({
     name: "outdir",
-    type: ArgumentType.STRING_WITHOUT_DEFAULT,
+    type: ArgumentType.STRING,
     description: "Output directory for generated markups",
     defaultValue: "./generated-markups",
   })

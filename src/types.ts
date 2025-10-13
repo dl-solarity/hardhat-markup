@@ -6,4 +6,4 @@ export interface DlMarkupConfig {
   verbose: boolean;
 }
 
-export interface DlMarkupUserConfig extends Partial<DlMarkupConfig> {}
+export type DlMarkupUserConfig = Partial<DlMarkupConfig>;
